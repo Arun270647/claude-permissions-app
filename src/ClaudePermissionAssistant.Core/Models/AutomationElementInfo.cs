@@ -20,4 +20,10 @@ public class AutomationElementInfo
     public string HelpText { get; init; } = string.Empty;
     public string ItemStatus { get; init; } = string.Empty;
     public string ItemType { get; init; } = string.Empty;
+
+    // TextPattern extraction
+    public bool TextPatternSupported { get; init; }
+    public string? ExtractedText { get; init; }
+    public int? ExtractedTextLength { get; init; }
+    public string? TextExtractionError { get; init; }
 }

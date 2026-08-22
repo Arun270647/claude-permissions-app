@@ -145,6 +145,44 @@ public partial class MainWindow : Window
             }
         }
 
+        // Add TextPattern information if applicable
+        if (element.TextPatternSupported)
+        {
+            sb.AppendLine();
+            sb.AppendLine("TextPattern:");
+            sb.AppendLine($"  Supported: true");
+
+            if (element.ExtractedTextLength.HasValue)
+            {
+                sb.AppendLine($"  TextLength: {element.ExtractedTextLength.Value}");
+            }
+
+            if (!string.IsNullOrEmpty(element.TextExtractionError))
+            {
+                sb.AppendLine($"  ExtractionError: {element.TextExtractionError}");
+            }
+
+            if (!string.IsNullOrEmpty(element.ExtractedText))
+            {
+                const int MaxDisplayLength = 2000; // Truncate for UI display
+                sb.AppendLine($"  ExtractedText:");
+
+                if (element.ExtractedText.Length <= MaxDisplayLength)
+                {
+                    sb.AppendLine($"  --- BEGIN TEXT ---");
+                    sb.AppendLine(element.ExtractedText);
+                    sb.AppendLine($"  --- END TEXT ---");
+                }
+                else
+                {
+                    sb.AppendLine($"  --- BEGIN TEXT (truncated, showing first {MaxDisplayLength} chars) ---");
+                    sb.AppendLine(element.ExtractedText.Substring(0, MaxDisplayLength));
+                    sb.AppendLine($"  ... (truncated, full text in export)");
+                    sb.AppendLine($"  --- END TEXT ---");
+                }
+            }
+        }
+
         sb.AppendLine();
         sb.AppendLine($"Depth: {element.Depth}");
         sb.AppendLine($"Children: {element.Children.Count}");

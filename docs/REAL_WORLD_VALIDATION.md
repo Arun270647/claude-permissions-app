@@ -13,6 +13,29 @@ Since the application is designed to automate Claude Code permission prompts, an
 
 ---
 
+## ✅ VALIDATED: conhost Text Extraction
+
+**Date**: 2026-08-22  
+**Status**: TextPattern support CONFIRMED
+
+Real UI Automation inspection against a Claude Code terminal running under conhost reveals:
+
+**Terminal Environment**:
+- Process: `conhost.exe`
+- Window Class: `ConsoleWindowClass`
+
+**Key Finding - Text Area Element**:
+- ControlType: `ControlType.Document`
+- Name: `Text Area`
+- AutomationId: `Text Area`
+- **Supported Pattern**: `TextPatternIdentifiers.Pattern` ✅
+
+**Implication**: conhost-based terminals (CMD, PowerShell) expose terminal text through UI Automation TextPattern via a Document element.
+
+**Phase 1 Inspector Enhancement**: The inspector has been updated to extract text from elements supporting TextPattern. When you inspect the "Text Area" element, the extracted terminal text will be displayed in the properties panel and included in diagnostic exports.
+
+---
+
 ## Validation Objectives
 
 Verify that:

@@ -145,6 +145,9 @@ public class WindowInspectorService
         var current = element.Current;
         var runtimeId = GetRuntimeIdString(element);
 
+        // Attempt to extract text if TextPattern is supported
+        var (textPatternSupported, extractedText, textLength, extractionError) = ExtractTextIfSupported(element);
+
         return new AutomationElementInfo
         {
             Name = current.Name ?? string.Empty,
@@ -163,7 +166,11 @@ public class WindowInspectorService
             AccessKey = current.AccessKey ?? string.Empty,
             HelpText = current.HelpText ?? string.Empty,
             ItemStatus = current.ItemStatus ?? string.Empty,
-            ItemType = current.ItemType ?? string.Empty
+            ItemType = current.ItemType ?? string.Empty,
+            TextPatternSupported = textPatternSupported,
+            ExtractedText = extractedText,
+            ExtractedTextLength = textLength,
+            TextExtractionError = extractionError
         };
     }
 
@@ -199,6 +206,59 @@ public class WindowInspectorService
     private string FormatBoundingRectangle(System.Windows.Rect rect)
     {
         return $"{rect.X},{rect.Y},{rect.Width},{rect.Height}";
+    }
+
+    private (bool supported, string? text, int? length, string? error) ExtractTextIfSupported(AutomationElement element)
+    {
+        try
+        {
+            // Check if TextPattern is supported
+            var supportedPatterns = element.GetSupportedPatterns();
+            var supportsTextPattern = supportedPatterns.Contains(TextPattern.Pattern);
+
+            if (!supportsTextPattern)
+            {
+                return (false, null, null, null);
+            }
+
+            // Attempt to get the TextPattern
+            try
+            {
+                var textPattern = element.GetCurrentPattern(TextPattern.Pattern) as TextPattern;
+                if (textPattern == null)
+                {
+                    return (true, null, null, "TextPattern supported but GetCurrentPattern returned null");
+                }
+
+                // Get the document range
+                var documentRange = textPattern.DocumentRange;
+                if (documentRange == null)
+                {
+                    return (true, null, null, "DocumentRange is null");
+                }
+
+                // Extract the text
+                // Using -1 to get all available text
+                var text = documentRange.GetText(-1);
+
+                if (text == null)
+                {
+                    return (true, null, null, "GetText returned null");
+                }
+
+                return (true, text, text.Length, null);
+            }
+            catch (Exception ex)
+            {
+                // Extraction failed but pattern is supported
+                return (true, null, null, $"Extraction failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Failed to check pattern support
+            return (false, null, null, $"Pattern check failed: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     private int CountElements(AutomationElementInfo? element)
@@ -260,6 +320,39 @@ public class WindowInspectorService
         if (!string.IsNullOrEmpty(element.HelpText))
         {
             sb.AppendLine($"{indent}  HelpText: {element.HelpText}");
+        }
+
+        // Add TextPattern information if applicable
+        if (element.TextPatternSupported)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"{indent}  TextPattern:");
+            sb.AppendLine($"{indent}    Supported: true");
+
+            if (element.ExtractedTextLength.HasValue)
+            {
+                sb.AppendLine($"{indent}    TextLength: {element.ExtractedTextLength.Value}");
+            }
+
+            if (!string.IsNullOrEmpty(element.TextExtractionError))
+            {
+                sb.AppendLine($"{indent}    ExtractionError: {element.TextExtractionError}");
+            }
+
+            if (!string.IsNullOrEmpty(element.ExtractedText))
+            {
+                sb.AppendLine($"{indent}    ExtractedText:");
+                sb.AppendLine($"{indent}    --- BEGIN TEXT ---");
+
+                // Include the full text in export (preserve ANSI codes and all characters)
+                var lines = element.ExtractedText.Split(new[] { '\r', '\n' }, StringSplitOptions.None);
+                foreach (var line in lines)
+                {
+                    sb.AppendLine($"{indent}    {line}");
+                }
+
+                sb.AppendLine($"{indent}    --- END TEXT ---");
+            }
         }
 
         sb.AppendLine();
