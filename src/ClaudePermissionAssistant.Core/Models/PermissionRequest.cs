@@ -8,9 +8,13 @@ public class PermissionRequest
     public string? Context { get; init; }
     public string? CommandLine { get; init; }
     public string? WorkingDirectory { get; init; }
+    public ClaudePermissionPromptType PromptType { get; init; }
+    public int? AllowFromProjectOptionNumber { get; init; }
 
     public bool HasAllowOption => Options.Any(o => o.Action == PermissionAction.Allow);
     public bool HasDenyOption => Options.Any(o => o.Action == PermissionAction.Deny);
+    public bool HasAllowFromProjectOption => AllowFromProjectOptionNumber.HasValue;
+
     public bool IsValid => !string.IsNullOrWhiteSpace(ToolName) &&
                            Options.Length > 0 &&
                            HasAllowOption &&
