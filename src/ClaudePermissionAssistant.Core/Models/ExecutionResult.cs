@@ -9,4 +9,7 @@ public class ExecutionResult
     public string? ErrorMessage { get; init; }
     public bool PromptDisappeared { get; init; }
     public TimeSpan ExecutionDuration { get; init; }
+    public ExecutionState FinalState { get; init; }
+    public bool ForegroundVerified { get; init; }
+    public int RetryCount { get; init; }
 }
