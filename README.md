@@ -1,12 +1,179 @@
 # Claude Permission Assistant
 
-A Windows desktop application that detects and manages Claude Code permission prompts using UI Automation.
+A simplified Windows automation utility that automatically selects option 2 ("Yes, allow reading from ... from this project") when Claude Code displays permission prompts.
 
 ## Project Status
 
-**Current Phase: Phase 1 - UI Automation Inspector**
+**Current Phase: Phase 3 - Core Logic Complete**
 
-Phase 1 is complete and provides a tool to inspect Windows UI Automation trees.
+✅ Phase 1: UI Automation Inspector - Complete  
+✅ Phase 2: Detection Architecture - Complete  
+✅ Phase 3: Automation Core - Complete  
+⚠️ Phase 4: System Tray UI - Pending
+
+**What Works Now**:
+- Detects specific Claude Code permission prompts
+- Identifies option 2 ("allow reading from ... from this project")
+- Sends keyboard input to select option 2
+- Background monitoring service
+- Statistics tracking
+- Duplicate detection
+
+**What Needs Completion**:
+- System tray icon and context menu
+- Dashboard window UI
+- File-based logging viewer
+- Settings persistence
+- Manual validation with real Claude Code sessions
+
+## Quick Start
+
+### Building
+```bash
+dotnet build
+```
+
+### Running Tests
+```bash
+dotnet test
+```
+
+**Test Status**: ✅ 44/44 tests passing
+
+### Using the Inspector (Phase 1)
+```bash
+dotnet run --project src/ClaudePermissionAssistant.App/ClaudePermissionAssistant.App.csproj
+```
+
+The inspector helps analyze how Claude Code prompts are exposed through Windows UI Automation.
+
+## How It Works
+
+The application automatically responds to Claude Code permission prompts that look like:
+
+```
+Do you want to proceed?
+
+> 1. Yes
+  2. Yes, allow reading from /c/C: from this project
+  3. No
+```
+
+**When detected, the application**:
+1. Verifies this is a genuine Claude Code prompt
+2. Identifies option 2 ("allow reading from ... from this project")
+3. Brings the terminal window to foreground
+4. Sends keyboard input: "2" + Enter
+5. Verifies the prompt disappeared
+6. Logs the result
+
+**Safety Features**:
+- Only acts on positively identified Claude prompts
+- Re-verifies prompt before sending keys
+- Duplicate detection (never executes same prompt twice)
+- Hard retry limits
+- No blind keyboard automation
+
+## Architecture
+
+### Detection Flow
+
+```
+Background Monitor (500ms polling)
+    ↓
+Detect Claude Sessions
+    ↓
+For each session:
+    ↓
+Extract terminal text via UI Automation
+    ↓
+Parse for specific pattern:
+    • "Do you want to proceed?"
+    • "Yes, allow reading from"
+    • "from this project"
+    ↓
+Identify option number (usually 2)
+    ↓
+Execute keyboard automation
+    ↓
+Verify success
+```
+
+### Key Components
+
+**ClaudePromptParserSimple**
+- Detects the specific Claude permission pattern
+- Handles dynamic paths
+- Returns option number to select
+
+**ClaudePermissionPromptExecutor**
+- Verifies prompt still present
+- Sends keyboard input via Windows SendInput API
+- Tracks duplicate execution
+- Reports success/failure
+
+**BackgroundMonitorService**
+- Continuous monitoring (500ms intervals)
+- Automatic execution when prompt detected
+- Statistics tracking
+- Enable/disable support
+
+## Testing
+
+### Unit Tests: 44/44 Passing ✅
+
+**Categories**:
+- Prompt detection (14 tests)
+- Session detection (5 tests)
+- Inspector functionality (3 tests)
+- Generic parser (18 tests)
+- Prompt detection (4 tests)
+
+**Example Test**:
+```csharp
+[Fact]
+public void ParsePermissionRequest_WithDifferentPath_FindsCorrectOption()
+{
+    var text = @"
+Do you want to proceed?
+
+  1. Yes
+  2. Yes, allow reading from /c/Users/USER/Documents/my-project from this project
+  3. No
+";
+
+    var request = _parser.ParsePermissionRequest(text);
+
+    Assert.NotNull(request);
+    Assert.Equal(2, request.AllowFromProjectOptionNumber);
+}
+```
+
+### Manual Testing Required ⚠️
+
+**Before production use**:
+
+1. **Verify Text Extraction**
+   - Use Phase 1 Inspector on terminal with Claude prompt
+   - Confirm TextPattern or ValuePattern provides text
+   - Validate text format is parseable
+
+2. **Test Detection Accuracy**
+   - Trigger real Claude Code prompt
+   - Verify detector identifies it correctly
+   - Confirm option 2 is found
+   - Check for false positives (normal terminal text)
+
+3. **Validate Keyboard Input**
+   - Test SetForegroundWindow brings terminal to front
+   - Verify terminal receives "2\n" correctly
+   - Confirm prompt is dismissed
+   - Check no input goes to wrong window
+
+4. **Test Terminal Compatibility**
+   - Windows Terminal
+   - CMD (conhost)
+   - PowerShell
 
 ## Phase 1: UI Automation Inspector
 
