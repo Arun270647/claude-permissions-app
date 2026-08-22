@@ -34,6 +34,21 @@ Real UI Automation inspection against a Claude Code terminal running under conho
 
 **Phase 1 Inspector Enhancement**: The inspector has been updated to extract text from elements supporting TextPattern. When you inspect the "Text Area" element, the extracted terminal text will be displayed in the properties panel and included in diagnostic exports.
 
+## 🎯 Live Prompt Test Tool
+
+**NEW**: A dedicated "Live Prompt Test" tool is now available for end-to-end validation of real Claude Code prompts.
+
+**Access**: Launch Phase 1 Inspector → Menu → Developer → Live Prompt Test...
+
+**Purpose**: Manually validate the complete detection pipeline:
+1. Select terminal running Claude Code
+2. Extract text via TextPattern
+3. Parse with ClaudePromptParserSimple
+4. View detection results
+5. Export captured prompts
+
+**See**: `docs/LIVE_PROMPT_TEST_GUIDE.md` for complete usage instructions.
+
 ---
 
 ## Validation Objectives

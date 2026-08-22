@@ -7,15 +7,23 @@
         mc:Ignorable="d"
         Title="Claude Permission Assistant - UI Automation Inspector" Height="700" Width="1200"
         WindowStartupLocation="CenterScreen">
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <DockPanel>
+        <!-- Menu Bar -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_Developer">
+                <MenuItem Header="Live _Prompt Test..." Click="LivePromptTest_Click"/>
+            </MenuItem>
+        </Menu>
 
-        <!-- Title and Instructions -->
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Title and Instructions -->
         <StackPanel Grid.Row="0" Margin="0,0,0,10">
             <TextBlock Text="UI Automation Inspector (Phase 1)" FontSize="18" FontWeight="Bold" Margin="0,0,0,5"/>
             <TextBlock Text="Select a window below to inspect its UI Automation tree structure." TextWrapping="Wrap"/>
@@ -108,6 +116,7 @@
                        Text="Ready. Select a window and click Inspect." Foreground="DarkGray"/>
             <Button Name="ExportButton" Grid.Column="1" Content="Export to File"
                     Width="120" Click="ExportButton_Click" IsEnabled="False"/>
+            </Grid>
         </Grid>
-    </Grid>
+    </DockPanel>
 </Window>

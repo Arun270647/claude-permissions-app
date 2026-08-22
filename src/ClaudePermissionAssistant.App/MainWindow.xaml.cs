@@ -224,6 +224,20 @@ public partial class MainWindow : Window
         }
     }
 
+    private void LivePromptTest_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var testWindow = new LivePromptTestWindow();
+            testWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to open Live Prompt Test: {ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private class WindowViewModel
     {
         public required WindowInfo Window { get; init; }
