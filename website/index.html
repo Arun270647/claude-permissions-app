@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Automatically approve Claude Code permission prompts. Free, open-source Windows and macOS app.">
+    <title>Claude Permission Assistant - Auto-approve Claude Code Prompts</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <div class="logo">
+                <h1>⚡ Claude Permission Assistant</h1>
+            </div>
+            <nav>
+                <a href="https://github.com/Arun270647/claude-permissions-app">GitHub</a>
+                <a href="https://github.com/Arun270647/claude-permissions-app#readme">Documentation</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h2>Stop Clicking. Start Coding.</h2>
+            <p class="subtitle">Automatically approve Claude Code permission prompts so you can focus on what matters.</p>
+
+            <div class="download-buttons">
+                <a href="https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.0/ClaudePermissionAssistant.exe" class="btn btn-primary">
+                    <span class="btn-icon">💾</span>
+                    Download for Windows
+                    <span class="btn-meta">v1.0.0 • 70MB • Free</span>
+                </a>
+                <a href="https://github.com/Arun270647/claude-permissions-app#installation" class="btn btn-secondary">
+                    <span class="btn-icon">🍎</span>
+                    macOS Instructions
+                </a>
+            </div>
+
+            <p class="note">✅ No installation required • ✅ Open source • ✅ No network access</p>
+        </div>
+    </section>
+
+    <!-- Problem/Solution -->
+    <section class="problem-solution">
+        <div class="container">
+            <div class="before-after">
+                <div class="before">
+                    <h3>❌ Before</h3>
+                    <div class="terminal">
+                        <p>Do you want to proceed?</p>
+                        <p>  1. Yes</p>
+                        <p>  2. Yes, allow from this project</p>
+                        <p>  3. No</p>
+                        <p></p>
+                        <p class="blink">█</p>
+                    </div>
+                    <p class="description">You have to press <code>2 + Enter</code> manually. <strong>Every. Single. Time.</strong></p>
+                </div>
+
+                <div class="after">
+                    <h3>✅ After</h3>
+                    <div class="terminal">
+                        <p>Do you want to proceed?</p>
+                        <p>  1. Yes</p>
+                        <p>> 2. Yes, allow from this project ✓</p>
+                        <p>  3. No</p>
+                        <p></p>
+                        <p class="success">Approved automatically!</p>
+                    </div>
+                    <p class="description">App detects the prompt and auto-approves in <strong>~300ms</strong>.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+        <div class="container">
+            <h2>Features</h2>
+            <div class="feature-grid">
+                <div class="feature">
+                    <div class="feature-icon">🖥️</div>
+                    <h3>Multi-Terminal</h3>
+                    <p>Monitor multiple terminals simultaneously</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📊</div>
+                    <h3>Statistics</h3>
+                    <p>See how many prompts were auto-approved</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Safe & Local</h3>
+                    <p>No network access, no data collection</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Fast Detection</h3>
+                    <p>Approves in ~300ms with 500ms polling</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Smart Parser</h3>
+                    <p>Regex-based, only acts on real prompts</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Safety First</h3>
+                    <p>Global lock, cooldown, verification</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section class="quick-start">
+        <div class="container">
+            <h2>Quick Start</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Download & Run</h3>
+                        <p>Double-click the exe. Windows may show SmartScreen warning - click "More info" → "Run anyway"</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Add Terminal</h3>
+                        <p>App opens in system tray. Click tray icon → "+ Add Terminal" → Select your CMD/PowerShell window</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Start Coding</h3>
+                        <p>Use Claude Code normally. Permission prompts are now auto-approved!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section class="tech-stack">
+        <div class="container">
+            <h2>Tech Stack</h2>
+            <div class="tech-badges">
+                <span class="badge">C# 12</span>
+                <span class="badge">.NET 8.0</span>
+                <span class="badge">WPF</span>
+                <span class="badge">Avalonia UI</span>
+                <span class="badge">Windows UI Automation</span>
+                <span class="badge">AppleScript</span>
+                <span class="badge">Regex Parser</span>
+            </div>
+            <p><a href="https://github.com/Arun270647/claude-permissions-app/blob/main/docs/TECH_STACK.md">Read full technical documentation →</a></p>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq">
+        <div class="container">
+            <h2>FAQ</h2>
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h3>Is it safe?</h3>
+                    <p>Yes. Open source, runs locally, no network access, no data collection. Review the code yourself.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Why does Windows block it?</h3>
+                    <p>The app isn't code-signed ($400/year). Click "More info" → "Run anyway" to proceed.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Which terminals work?</h3>
+                    <p>Windows: CMD, PowerShell, Windows Terminal. macOS: Terminal.app (iTerm2 coming soon).</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Can I customize it?</h3>
+                    <p>Yes! Fork the repo, modify the code, build your own version. MIT licensed.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta">
+        <div class="container">
+            <h2>Ready to stop clicking?</h2>
+            <a href="https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.0/ClaudePermissionAssistant.exe" class="btn btn-primary btn-large">
+                <span class="btn-icon">💾</span>
+                Download for Windows
+                <span class="btn-meta">v1.0.0 • Free Forever</span>
+            </a>
+            <p class="cta-links">
+                <a href="https://github.com/Arun270647/claude-permissions-app">View on GitHub</a>
+                <span>•</span>
+                <a href="https://github.com/Arun270647/claude-permissions-app/blob/main/docs/CONTRIBUTING.md">Contribute</a>
+                <span>•</span>
+                <a href="https://github.com/Arun270647/claude-permissions-app/issues">Report Bug</a>
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>Made with ❤️ for a smoother Claude Code experience</p>
+            <p>
+                <a href="https://github.com/Arun270647/claude-permissions-app/blob/main/LICENSE">MIT License</a>
+                <span>•</span>
+                <a href="https://github.com/Arun270647">@Arun270647</a>
+                <span>•</span>
+                <a href="https://github.com/Arun270647/claude-permissions-app/releases">Releases</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
