@@ -1,0 +1,97 @@
+name: Build Windows
+
+on:
+  push:
+    branches:
+      - windows
+      - main
+    paths:
+      - 'src/Windows/**'
+      - 'src/Shared/**'
+      - '.github/workflows/build-windows.yml'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Run tests
+      run: dotnet test --no-build --configuration Release --verbosity normal
+
+    - name: Publish Windows app
+      run: |
+        dotnet publish src/Windows/ClaudePermissionAssistant.App/ClaudePermissionAssistant.App.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained true `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:EnableCompressionInSingleFile=true `
+          -o publish/win-x64
+
+    - name: Get version from csproj
+      id: version
+      run: |
+        $version = Select-Xml -Path "src/Windows/ClaudePermissionAssistant.App/ClaudePermissionAssistant.App.csproj" -XPath "//Version" | Select-Object -ExpandProperty Node | Select-Object -ExpandProperty InnerText
+        if ([string]::IsNullOrEmpty($version)) {
+          $version = "1.0.0"
+        }
+        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+        echo "Version: $version"
+      shell: pwsh
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build-v${{ steps.version.outputs.VERSION }}
+        path: publish/win-x64/ClaudePermissionAssistant.exe
+        retention-days: 90
+
+    - name: Create/Update Release
+      if: github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.VERSION }}
+        name: v${{ steps.version.outputs.VERSION }}
+        files: publish/win-x64/ClaudePermissionAssistant.exe
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update latest-windows.json
+      if: github.ref == 'refs/heads/main'
+      run: |
+        $version = "${{ steps.version.outputs.VERSION }}"
+        $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/v$version/ClaudePermissionAssistant.exe"
+        $json = @{
+          version = $version
+          url = $downloadUrl
+          changelog = "https://github.com/${{ github.repository }}/releases/tag/v$version"
+          publishedAt = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+        } | ConvertTo-Json
+
+        echo $json | Out-File -FilePath latest-windows.json -Encoding UTF8
+      shell: pwsh
+
+    - name: Upload update manifest
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: update-manifest-windows
+        path: latest-windows.json
