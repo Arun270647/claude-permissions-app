@@ -236,16 +236,37 @@ A: Yes. Use the "+ Add Terminal" button in the dashboard to add/remove terminals
 - Minimize the dashboard window
 - Check logs in the app's data directory
 
+## Repository Branches
+
+This repository uses platform-specific branches:
+
+- **[main](https://github.com/Arun270647/claude-permissions-app)** - Production code (all platforms)
+- **[windows](https://github.com/Arun270647/claude-permissions-app/tree/windows)** - Windows development (WPF, UI Automation)
+- **[macos](https://github.com/Arun270647/claude-permissions-app/tree/macos)** - macOS development (Avalonia, AppleScript)
+- **[web](https://github.com/Arun270647/claude-permissions-app/tree/web)** - Website landing page
+
+**Each branch shows only relevant content:**
+- `windows` branch: Windows source code only
+- `macos` branch: macOS source code only  
+- `web` branch: Website files only
+- `main` branch: Complete project (all platforms)
+
+See [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md) for workflow details.
+
 ## Contributing
 
 Contributions welcome! Please:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Choose the right branch:
+   - Windows-specific → `windows` branch
+   - macOS-specific → `macos` branch
+   - Website → `web` branch
+   - Cross-platform → `main` branch
 3. Run tests (`dotnet test`)
-4. Commit changes (`git commit -m 'Add amazing feature'`)
-5. Push to branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
+4. Commit changes
+5. Push to your branch
+6. Open a Pull Request to `main`
 
 See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
 
