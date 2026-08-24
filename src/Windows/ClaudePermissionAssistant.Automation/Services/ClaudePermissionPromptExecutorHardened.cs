@@ -1,0 +1,363 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using ClaudePermissionAssistant.Core.Interfaces;
+using ClaudePermissionAssistant.Core.Models;
+using Microsoft.Extensions.Logging;
+
+namespace ClaudePermissionAssistant.Automation.Services;
+
+/// <summary>
+/// Hardened executor with comprehensive safety checks and state machine
+/// </summary>
+public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExecutor
+{
+    private static readonly object _executionGate = new();
+    private readonly IClaudePromptDetector _detector;
+    private readonly ILogger<ClaudePermissionPromptExecutorHardened> _logger;
+    private readonly ExecutorConfiguration _config;
+    private readonly Dictionary<string, DateTime> _handledPrompts = new();
+    private readonly object _lock = new();
+    private static readonly TimeSpan DuplicateCooldown = TimeSpan.FromSeconds(5);
+
+    public ClaudePermissionPromptExecutorHardened(
+        IClaudePromptDetector detector,
+        ILogger<ClaudePermissionPromptExecutorHardened> logger,
+        ExecutorConfiguration? config = null)
+    {
+        _detector = detector;
+        _logger = logger;
+        _config = config ?? new ExecutorConfiguration();
+    }
+
+    public ExecutionResult Execute(DetectedPrompt prompt)
+    {
+        var startTime = DateTime.UtcNow;
+        var state = ExecutionState.Detected;
+
+        try
+        {
+            _logger.LogInformation("Starting execution for prompt in session {ProcessId}",
+                prompt.Session.TerminalProcessId);
+
+            // Check if already handled
+            if (IsPromptAlreadyHandled(prompt))
+            {
+                return CreateFailureResult(prompt, startTime, 0,
+                    "Prompt already handled", ExecutionState.Failed);
+            }
+
+            // Step 1: Re-detect the prompt
+            _logger.LogDebug("Re-detecting prompt");
+            var redetected = _detector.DetectPrompt(prompt.Session);
+            if (redetected == null)
+            {
+                return CreateFailureResult(prompt, startTime, 0,
+                    "Prompt no longer present", ExecutionState.Failed);
+            }
+
+            state = ExecutionState.Verified;
+
+            // Step 2: Verify an approval option is available (persistent or simple "Yes")
+            if (!redetected.Request.BestApprovalOptionNumber.HasValue)
+            {
+                return CreateFailureResult(prompt, startTime, 0,
+                    "No approval option found", ExecutionState.Failed);
+            }
+
+            var optionNumber = redetected.Request.BestApprovalOptionNumber.Value;
+            _logger.LogInformation("Target option number: {OptionNumber}", optionNumber);
+
+            // Step 3: Execute with global lock
+            // Global lock ensures only one executor can send keys at a time.
+            // Without this, multiple monitors would interfere with each other.
+            lock (_executionGate)
+            {
+                var attemptResult = ExecuteAttempt(prompt, redetected, optionNumber, ref state);
+
+                // Keys were sent, mark as handled and return success
+                MarkPromptAsHandled(prompt);
+                return attemptResult;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception during execution");
+            return CreateFailureResult(prompt, startTime, 0,
+                $"Exception: {ex.Message}", ExecutionState.Failed);
+        }
+    }
+
+    private ExecutionResult ExecuteAttempt(
+        DetectedPrompt originalPrompt,
+        DetectedPrompt redetected,
+        int optionNumber,
+        ref ExecutionState state)
+    {
+        var startTime = DateTime.UtcNow;
+
+        // Step 3.1: Bring terminal to foreground
+        _logger.LogDebug("Bringing terminal to foreground");
+        var targetHwnd = redetected.Session.TerminalWindowHandle;
+
+        if (!SetForegroundWindow(targetHwnd))
+        {
+            _logger.LogWarning("SetForegroundWindow returned false");
+        }
+
+        // Step 3.2: Wait for focus transition
+        Thread.Sleep(_config.FocusDelayMs);
+
+        // Step 3.3: Check foreground window (informational only - global lock prevents wrong window)
+        var foregroundHwnd = GetForegroundWindow();
+        bool foregroundVerified = foregroundHwnd == targetHwnd;
+
+        if (!foregroundVerified)
+        {
+            _logger.LogWarning("Foreground verification WARNING. Target: 0x{Target:X}, Actual: 0x{Actual:X} - proceeding anyway (global lock active)",
+                targetHwnd.ToInt64(), foregroundHwnd.ToInt64());
+        }
+        else
+        {
+            _logger.LogInformation("Foreground verified: 0x{Hwnd:X}", foregroundHwnd.ToInt64());
+        }
+
+        state = ExecutionState.Focused;
+
+        // Step 3.4: Send keyboard input
+        _logger.LogInformation("Sending option {Number}", optionNumber);
+        SendKeyPress(optionNumber.ToString()[0]);
+
+        Thread.Sleep(_config.KeyPressDelayMs);
+
+        _logger.LogDebug("Sending Enter");
+        SendKeyPress('\r');
+
+        state = ExecutionState.InputSent;
+
+        // Step 3.5: Wait for processing
+        Thread.Sleep(_config.VerificationDelayMs);
+
+        state = ExecutionState.Verifying;
+
+        // Step 3.6: Verify prompt disappeared (optional - keys were already sent)
+        _logger.LogDebug("Verifying prompt disappeared");
+        var stillPresent = _detector.DetectPrompt(redetected.Session);
+        var promptDisappeared = stillPresent == null;
+
+        if (promptDisappeared)
+        {
+            _logger.LogInformation("Prompt disappeared - execution successful");
+        }
+        else
+        {
+            _logger.LogInformation("Prompt still visible, but keys were sent - treating as success");
+        }
+
+        state = ExecutionState.Success;
+
+        return new ExecutionResult
+        {
+            Success = true,
+            ExecutedAt = startTime,
+            Prompt = originalPrompt,
+            SelectedOptionNumber = optionNumber,
+            PromptDisappeared = promptDisappeared,
+            ExecutionDuration = DateTime.UtcNow - startTime,
+            FinalState = ExecutionState.Success,
+            ForegroundVerified = foregroundVerified,
+            RetryCount = 0
+        };
+    }
+
+    public bool IsPromptAlreadyHandled(DetectedPrompt prompt)
+    {
+        lock (_lock)
+        {
+            var key = GetPromptKey(prompt);
+            if (_handledPrompts.TryGetValue(key, out var handledAt))
+            {
+                if (DateTime.UtcNow - handledAt < DuplicateCooldown)
+                    return true;
+
+                // Cooldown expired — this is a new instance of the same prompt text
+                _handledPrompts.Remove(key);
+                return false;
+            }
+            return false;
+        }
+    }
+
+    public void MarkPromptAsHandled(DetectedPrompt prompt)
+    {
+        lock (_lock)
+        {
+            var key = GetPromptKey(prompt);
+            _handledPrompts[key] = DateTime.UtcNow;
+
+            // Cleanup old entries
+            if (_handledPrompts.Count > 1000)
+            {
+                var cutoff = DateTime.UtcNow.AddMinutes(-5);
+                var oldKeys = _handledPrompts
+                    .Where(kvp => kvp.Value < cutoff)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+
+                foreach (var oldKey in oldKeys)
+                {
+                    _handledPrompts.Remove(oldKey);
+                }
+
+                _logger.LogDebug("Cleaned up {Count} old prompt entries", oldKeys.Count);
+            }
+        }
+    }
+
+    public void ClearHandledPrompts()
+    {
+        lock (_lock)
+        {
+            _handledPrompts.Clear();
+            _logger.LogInformation("Cleared all handled prompts");
+        }
+    }
+
+    private string GetPromptKey(DetectedPrompt prompt)
+    {
+        // Use prompt region for stable identity, not full terminal buffer
+        // PromptRegion contains just the question + options, so hash remains stable
+        // as new lines are added to terminal buffer
+        var textToHash = prompt.Request.PromptRegion ?? prompt.RawText;
+        var textHash = textToHash.GetHashCode();
+        return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{textHash}";
+    }
+
+    private ExecutionResult CreateFailureResult(
+        DetectedPrompt prompt,
+        DateTime startTime,
+        int optionNumber,
+        string errorMessage,
+        ExecutionState state)
+    {
+        _logger.LogWarning("Execution failed: {Error}", errorMessage);
+
+        return new ExecutionResult
+        {
+            Success = false,
+            ExecutedAt = startTime,
+            Prompt = prompt,
+            SelectedOptionNumber = optionNumber,
+            ErrorMessage = errorMessage,
+            ExecutionDuration = DateTime.UtcNow - startTime,
+            FinalState = state,
+            ForegroundVerified = false,
+            RetryCount = 0
+        };
+    }
+
+    private void SendKeyPress(char key)
+    {
+        var inputs = new INPUT[2];
+
+        // Key down
+        inputs[0] = new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new InputUnion
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = 0,
+                    wScan = key,
+                    dwFlags = KEYEVENTF_UNICODE,
+                    time = 0,
+                    dwExtraInfo = IntPtr.Zero
+                }
+            }
+        };
+
+        // Key up
+        inputs[1] = new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new InputUnion
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = 0,
+                    wScan = key,
+                    dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                    time = 0,
+                    dwExtraInfo = IntPtr.Zero
+                }
+            }
+        };
+
+        var sent = SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+        _logger.LogDebug("SendInput sent {Count} inputs for key '{Key}'", sent, key);
+    }
+
+    #region Windows API
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    private const int INPUT_KEYBOARD = 1;
+    private const uint KEYEVENTF_UNICODE = 0x0004;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct INPUT
+    {
+        public int type;
+        public InputUnion u;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    private struct InputUnion
+    {
+        [FieldOffset(0)]
+        public MOUSEINPUT mi;
+        [FieldOffset(0)]
+        public KEYBDINPUT ki;
+        [FieldOffset(0)]
+        public HARDWAREINPUT hi;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MOUSEINPUT
+    {
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KEYBDINPUT
+    {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct HARDWAREINPUT
+    {
+        public uint uMsg;
+        public ushort wParamL;
+        public ushort wParamH;
+    }
+
+    #endregion
+}

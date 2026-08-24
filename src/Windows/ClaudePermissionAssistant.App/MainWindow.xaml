@@ -1,0 +1,124 @@
+﻿<Window x:Class="ClaudePermissionAssistant.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ClaudePermissionAssistant.App"
+        mc:Ignorable="d"
+        Title="Claude Permission Assistant - UI Automation Inspector" Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <!-- Menu Bar -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_Developer">
+                <MenuItem Header="Live _Prompt Test..." Click="LivePromptTest_Click"/>
+                <Separator/>
+                <MenuItem Header="_Executor Test (Automation)..." Click="ExecutorTest_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Title and Instructions -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="UI Automation Inspector (Phase 1)" FontSize="18" FontWeight="Bold" Margin="0,0,0,5"/>
+            <TextBlock Text="Select a window below to inspect its UI Automation tree structure." TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <!-- Window Selection -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <ComboBox Name="WindowComboBox" Grid.Column="0" Margin="0,0,10,0"
+                      DisplayMemberPath="DisplayText" VerticalContentAlignment="Center"/>
+            <Button Name="RefreshButton" Grid.Column="1" Content="Refresh Windows"
+                    Width="120" Margin="0,0,10,0" Click="RefreshButton_Click"/>
+            <Button Name="InspectButton" Grid.Column="2" Content="Inspect Selected"
+                    Width="120" Click="InspectButton_Click"/>
+        </Grid>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Tree View -->
+            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Automation Tree" FontWeight="Bold"
+                               Margin="5" Background="LightGray" Padding="3"/>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Auto">
+                        <TreeView Name="AutomationTreeView"
+                                  SelectedItemChanged="AutomationTreeView_SelectedItemChanged">
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding ControlType}" FontWeight="Bold" Foreground="DarkBlue"/>
+                                        <TextBlock Text=" - " Margin="3,0"/>
+                                        <TextBlock Text="{Binding Name}" Foreground="DarkGreen"/>
+                                        <TextBlock Text=" [" Margin="3,0,0,0"/>
+                                        <TextBlock Text="{Binding AutomationId}" Foreground="Gray"/>
+                                        <TextBlock Text="]"/>
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+                          Background="LightGray"/>
+
+            <!-- Properties Panel -->
+            <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Element Properties" FontWeight="Bold"
+                               Margin="5" Background="LightGray" Padding="3"/>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <TextBlock Name="PropertiesTextBlock" Margin="5" FontFamily="Consolas"
+                                   FontSize="11" TextWrapping="Wrap"/>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status and Export -->
+        <Grid Grid.Row="3" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Name="StatusTextBlock" Grid.Column="0" VerticalAlignment="Center"
+                       Text="Ready. Select a window and click Inspect." Foreground="DarkGray"/>
+            <Button Name="ExportButton" Grid.Column="1" Content="Export to File"
+                    Width="120" Click="ExportButton_Click" IsEnabled="False"/>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</Window>

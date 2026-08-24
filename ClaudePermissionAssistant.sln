@@ -5,13 +5,17 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudePermissionAssistant.Core", "src\ClaudePermissionAssistant.Core\ClaudePermissionAssistant.Core.csproj", "{D9196C1E-E9F0-42EC-9031-161222DA83A7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudePermissionAssistant.Core", "src\Shared\ClaudePermissionAssistant.Core\ClaudePermissionAssistant.Core.csproj", "{D9196C1E-E9F0-42EC-9031-161222DA83A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudePermissionAssistant.Automation", "src\ClaudePermissionAssistant.Automation\ClaudePermissionAssistant.Automation.csproj", "{29647DC6-56C1-460A-A075-826583320C33}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudePermissionAssistant.Automation", "src\Windows\ClaudePermissionAssistant.Automation\ClaudePermissionAssistant.Automation.csproj", "{29647DC6-56C1-460A-A075-826583320C33}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudePermissionAssistant.App", "src\ClaudePermissionAssistant.App\ClaudePermissionAssistant.App.csproj", "{08CAC13F-55CC-4E2A-BF70-22E1CD7B9B7D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudePermissionAssistant.App", "src\Windows\ClaudePermissionAssistant.App\ClaudePermissionAssistant.App.csproj", "{08CAC13F-55CC-4E2A-BF70-22E1CD7B9B7D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudePermissionAssistant.Automation.Tests", "tests\ClaudePermissionAssistant.Automation.Tests\ClaudePermissionAssistant.Automation.Tests.csproj", "{A3C88AA6-15E5-4DE3-8CC5-196655BAD404}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudePermissionAssistant.MacOS", "src\macOS\ClaudePermissionAssistant.MacOS\ClaudePermissionAssistant.MacOS.csproj", "{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaudePermissionAssistant.MacApp", "src\macOS\ClaudePermissionAssistant.MacApp\ClaudePermissionAssistant.MacApp.csproj", "{5838B41D-376D-4D4B-90A6-7A396A864916}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -71,6 +75,30 @@ Global
 		{A3C88AA6-15E5-4DE3-8CC5-196655BAD404}.Release|x64.Build.0 = Release|Any CPU
 		{A3C88AA6-15E5-4DE3-8CC5-196655BAD404}.Release|x86.ActiveCfg = Release|Any CPU
 		{A3C88AA6-15E5-4DE3-8CC5-196655BAD404}.Release|x86.Build.0 = Release|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Debug|x64.Build.0 = Debug|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Debug|x86.Build.0 = Debug|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Release|x64.ActiveCfg = Release|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Release|x64.Build.0 = Release|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Release|x86.ActiveCfg = Release|Any CPU
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93}.Release|x86.Build.0 = Release|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Debug|x64.Build.0 = Debug|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Debug|x86.Build.0 = Debug|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Release|x64.ActiveCfg = Release|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Release|x64.Build.0 = Release|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Release|x86.ActiveCfg = Release|Any CPU
+		{5838B41D-376D-4D4B-90A6-7A396A864916}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -80,5 +108,7 @@ Global
 		{29647DC6-56C1-460A-A075-826583320C33} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{08CAC13F-55CC-4E2A-BF70-22E1CD7B9B7D} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{A3C88AA6-15E5-4DE3-8CC5-196655BAD404} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{1C62AA23-1204-4E1A-8BC7-6CA66E62AB93} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{5838B41D-376D-4D4B-90A6-7A396A864916} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

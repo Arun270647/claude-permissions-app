@@ -1,0 +1,134 @@
+<Window x:Class="ClaudePermissionAssistant.App.DashboardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Claude Permission Assistant" Height="650" Width="750"
+        WindowStartupLocation="CenterScreen"
+        Closing="Window_Closing">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0" Text="CLAUDE PERMISSION ASSISTANT"
+                   FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+
+        <!-- Statistics -->
+        <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" Padding="15" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="Statistics" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Prompts Detected:" FontSize="11" Foreground="Gray"/>
+                        <TextBlock Name="PromptsDetectedTextBlock" Text="0" FontSize="20" FontWeight="Bold"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Prompts Approved:" FontSize="11" Foreground="Gray"/>
+                        <TextBlock Name="PromptsApprovedTextBlock" Text="0" FontSize="20" FontWeight="Bold"
+                                   Foreground="Green"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Prompts Failed:" FontSize="11" Foreground="Gray"/>
+                        <TextBlock Name="PromptsFailedTextBlock" Text="0" FontSize="20" FontWeight="Bold"
+                                   Foreground="Red"/>
+                    </StackPanel>
+                </Grid>
+
+                <Separator Margin="0,15,0,15"/>
+
+                <StackPanel>
+                    <TextBlock Text="Last Approval:" FontSize="11" Foreground="Gray" Margin="0,0,0,5"/>
+                    <TextBlock Name="LastApprovalTextBlock" Text="Never" FontSize="12" FontWeight="Bold"/>
+                </StackPanel>
+
+                <StackPanel Margin="0,10,0,0">
+                    <TextBlock Text="Last Error:" FontSize="11" Foreground="Gray" Margin="0,0,0,5"/>
+                    <TextBlock Name="LastErrorTextBlock" Text="None" FontSize="12" FontWeight="Bold"
+                               Foreground="Red" TextWrapping="Wrap"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Monitored Terminals -->
+        <Border Grid.Row="2" BorderBrush="Gray" BorderThickness="1" Padding="15" Margin="0,0,0,15">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="Monitored Terminals" FontSize="14" FontWeight="Bold"
+                               VerticalAlignment="Center"/>
+
+                    <Button Name="AddTerminalButton" Grid.Column="1" Content="+ Add Terminal"
+                            Width="120" Height="30" Click="AddTerminalButton_Click"
+                            Background="#4CAF50" Foreground="White" FontWeight="Bold"/>
+                </Grid>
+
+                <ListBox Name="TerminalListBox" Grid.Row="1" BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="LightGray" BorderThickness="1" Padding="10" Margin="0,0,0,5"
+                                    CornerRadius="3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="●" FontSize="14" VerticalAlignment="Center"
+                                               Foreground="{Binding StatusColor}" Margin="0,0,10,0"/>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="12"/>
+                                        <TextBlock Text="{Binding Details}" FontSize="10" Foreground="Gray"/>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="2" Content="Remove" Width="70" Height="25"
+                                            Tag="{Binding}" Click="RemoveTerminalButton_Click"
+                                            Background="#F44336" Foreground="White" FontSize="11"
+                                            VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock Name="NoTerminalsTextBlock" Grid.Row="1"
+                           Text="No terminals being monitored. Click '+ Add Terminal' to start."
+                           Foreground="Gray" FontStyle="Italic" VerticalAlignment="Center"
+                           HorizontalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Bottom Controls -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Name="StopAllButton" Content="STOP ALL" Width="100" Height="35"
+                    Click="StopAllButton_Click" IsEnabled="False"
+                    Background="#F44336" Foreground="White" FontWeight="Bold"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -93,3 +93,6 @@ Desktop.ini
 
 # macOS
 .DS_Store
+
+# Publish output
+publish/

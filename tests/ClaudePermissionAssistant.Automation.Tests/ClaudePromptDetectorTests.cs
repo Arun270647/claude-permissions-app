@@ -1,3 +1,4 @@
+using ClaudePermissionAssistant.Core.Services;
 using ClaudePermissionAssistant.Automation.Services;
 using ClaudePermissionAssistant.Core.Models;
 

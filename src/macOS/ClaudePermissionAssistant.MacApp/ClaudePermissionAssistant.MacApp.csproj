@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RuntimeIdentifiers>osx-x64;osx-arm64;win-x64;linux-x64</RuntimeIdentifiers>
+
+    <!-- App Identity -->
+    <AssemblyName>ClaudePermissionAssistant</AssemblyName>
+    <RootNamespace>ClaudePermissionAssistant.MacApp</RootNamespace>
+    <Product>Claude Permission Assistant</Product>
+    <Description>Automatically approves Claude Code permission prompts</Description>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.10" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.0.10" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\ClaudePermissionAssistant.Core\ClaudePermissionAssistant.Core.csproj" />
+    <ProjectReference Include="..\ClaudePermissionAssistant.MacOS\ClaudePermissionAssistant.MacOS.csproj" Condition="'$(RuntimeIdentifier)' == 'osx-x64' or '$(RuntimeIdentifier)' == 'osx-arm64'" />
+    <ProjectReference Include="..\..\Windows\ClaudePermissionAssistant.Automation\ClaudePermissionAssistant.Automation.csproj" Condition="'$(RuntimeIdentifier)' == 'win-x64'" />
+  </ItemGroup>
+
+</Project>

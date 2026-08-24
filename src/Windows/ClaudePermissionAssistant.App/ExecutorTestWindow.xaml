@@ -1,0 +1,111 @@
+<Window x:Class="ClaudePermissionAssistant.App.ExecutorTestWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Executor Test - CONTROLLED AUTOMATION" Height="750" Width="1000"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title and Warning -->
+        <Border Grid.Row="0" Background="#FFEB3B" Padding="10" Margin="0,0,0,15" BorderBrush="#FF9800" BorderThickness="2">
+            <StackPanel>
+                <TextBlock Text="⚠️ EXECUTOR TEST MODE - CONTROLLED AUTOMATION ⚠️"
+                           FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <TextBlock Text="This will send REAL keyboard input to the selected terminal. Use with caution."
+                           FontSize="12" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Step 1: Terminal Selection -->
+        <GroupBox Grid.Row="1" Header="Step 1: Select Target Terminal" Margin="0,0,0,15">
+            <StackPanel Margin="10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ComboBox Name="WindowComboBox" Grid.Column="0" Margin="0,0,10,0"
+                              DisplayMemberPath="DisplayText"
+                              SelectionChanged="WindowComboBox_SelectionChanged"/>
+                    <Button Name="RefreshButton" Grid.Column="1" Content="Refresh Windows"
+                            Width="120" Click="RefreshButton_Click"/>
+                </Grid>
+
+                <TextBlock Name="SelectedWindowInfo" Margin="0,10,0,0"
+                           Text="No window selected" FontStyle="Italic" Foreground="Gray"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Step 2: Prompt Detection -->
+        <GroupBox Grid.Row="2" Header="Step 2: Detect Prompt" Margin="0,0,0,15">
+            <StackPanel Margin="10">
+                <Button Name="DetectButton" Content="Detect Prompt" Width="150"
+                        HorizontalAlignment="Left" Click="DetectButton_Click"
+                        IsEnabled="False" Height="35"/>
+
+                <TextBlock Name="DetectionStatus" Margin="0,10,0,0"
+                           Text="Select a terminal and click Detect Prompt"
+                           FontStyle="Italic" Foreground="Gray"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Step 3: Prompt Information and Diagnostics -->
+        <GroupBox Grid.Row="3" Header="Detected Prompt Information / Diagnostics" Margin="0,0,0,15">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Diagnostic Actions -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10,10,10,10">
+                    <Button Name="ExportRawTextButton" Content="Export Raw Text" Width="130"
+                            Click="ExportRawTextButton_Click" IsEnabled="False" Margin="0,0,10,0"/>
+                    <Button Name="ExportDiagnosticsButton" Content="Export Diagnostics" Width="150"
+                            Click="ExportDiagnosticsButton_Click" IsEnabled="False"/>
+                </StackPanel>
+
+                <!-- Information Display -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <TextBlock Name="PromptInfoTextBlock" FontFamily="Consolas" FontSize="11"
+                               Padding="10" TextWrapping="Wrap"/>
+                </ScrollViewer>
+            </Grid>
+        </GroupBox>
+
+        <!-- Step 4: Execute -->
+        <GroupBox Grid.Row="4" Header="Step 3: Execute Approval" Margin="0,0,0,15">
+            <StackPanel Margin="10">
+                <Button Name="ExecuteButton" Content="Execute Approval (Send Keyboard Input)"
+                        Width="280" HorizontalAlignment="Left" Click="ExecuteButton_Click"
+                        IsEnabled="False" Height="40" Background="#FF9800"
+                        Foreground="White" FontWeight="Bold"/>
+
+                <TextBlock Name="ExecutionInfo" Margin="0,10,0,0"
+                           Text="Detect a prompt first" FontStyle="Italic" Foreground="Gray"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Status and Results -->
+        <Border Grid.Row="5" Background="#ECEFF1" Padding="10" BorderBrush="Gray" BorderThickness="1">
+            <StackPanel>
+                <TextBlock Name="StatusTextBlock" FontWeight="Bold"
+                           Text="Ready. Select a terminal running Claude Code."/>
+
+                <TextBlock Name="ResultTextBlock" Margin="0,5,0,0" TextWrapping="Wrap"
+                           Visibility="Collapsed"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
