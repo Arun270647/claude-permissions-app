@@ -142,7 +142,7 @@ Monitor multiple terminals with real-time statistics:
 - AppleScript for text extraction
 - System Events for keyboard injection
 
-**See [TECH_STACK.md](TECH_STACK.md) for complete technical details.**
+**See [TECH_STACK.md](docs/TECH_STACK.md) for complete technical details.**
 
 ## Building from Source
 
@@ -197,7 +197,7 @@ publish/
 └── osx-arm64/                                 # macOS executables
 ```
 
-See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for detailed organization.
+See [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for detailed organization.
 
 ## FAQ
 
@@ -247,7 +247,7 @@ Contributions welcome! Please:
 5. Push to branch (`git push origin feature/amazing-feature`)
 6. Open a Pull Request
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
 
 ## Roadmap
 
@@ -274,8 +274,9 @@ MIT License - see [LICENSE](LICENSE) for details.
 - **Repository:** https://github.com/Arun270647/claude-permissions-app
 - **Issues:** https://github.com/Arun270647/claude-permissions-app/issues
 - **Releases:** https://github.com/Arun270647/claude-permissions-app/releases
-- **Tech Stack:** [TECH_STACK.md](TECH_STACK.md)
-- **Distribution:** [DISTRIBUTION_GUIDE.md](DISTRIBUTION_GUIDE.md)
+- **Tech Stack:** [TECH_STACK.md](docs/TECH_STACK.md)
+- **Distribution:** [DISTRIBUTION_GUIDE.md](docs/windows/DISTRIBUTION_GUIDE.md)
+- **Development:** [DEV_WORKFLOW.md](docs/DEV_WORKFLOW.md)
 
 ---
 
