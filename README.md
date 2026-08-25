@@ -1,17 +1,18 @@
-# Claude Permission Assistant
+# Claude Prompter
 
 > Automatically approve Claude Code permission prompts so you can focus on coding.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.1-green.svg)](https://github.com/Arun270647/claude-permissions-app/releases/latest)
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows-10%2F11-0078D6?logo=windows&logoColor=white" alt="Windows 10/11"/>
   <img src="https://img.shields.io/badge/macOS-10.15+-000000?logo=apple&logoColor=white" alt="macOS 10.15+"/>
 </p>
 
-> 🌐 **[View the Website](https://github.com/Arun270647/cpa-web)** • Modern landing page with downloads and documentation
+> 🌐 **[Visit Website](https://cpa-web-swart.vercel.app/)** • Modern landing page with downloads and documentation
 
 ## What It Does
 
@@ -45,15 +46,23 @@ Do you want to proceed?
 ✅ **Cross-platform** - Works on Windows and macOS  
 ✅ **Safe & local** - No network access, no data leaves your machine  
 ✅ **Smart detection** - Only acts on genuine Claude Code prompts  
+✅ **Auto-update system** - Checks for updates automatically (v1.0.1+)  
+✅ **Professional packaging** - .exe for Windows, .dmg for macOS
 
 ## Installation
+
+### Quick Download
+
+**[Download Latest Release (v1.0.1)](https://github.com/Arun270647/claude-permissions-app/releases/latest)**
+
+Or visit the website: **[cpa-web-swart.vercel.app](https://cpa-web-swart.vercel.app/)**
 
 ### Windows
 
 1. **Download** the latest release:
-   - [ClaudePermissionAssistant-Windows-x64-v1.0.0.exe](https://github.com/Arun270647/claude-permissions-app/releases/latest)
+   - [ClaudePrompter-Windows-v1.0.1.exe](https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.1/ClaudePrompter-Windows-v1.0.1.exe)
 
-2. **Run the exe**
+2. **Run the .exe**
    - Double-click the downloaded file
    - Windows SmartScreen may appear → Click "More info" → "Run anyway"
    - The app will open in your system tray (bottom-right corner)
@@ -66,20 +75,22 @@ Do you want to proceed?
 
 ### macOS
 
-1. **Download** the appropriate version for your Mac:
-   - Apple Silicon (M1/M2/M3): [ClaudePermissionAssistant-macOS-arm64-v1.0.0](https://github.com/Arun270647/claude-permissions-app/releases/latest)
-   - Intel Mac: [ClaudePermissionAssistant-macOS-x64-v1.0.0](https://github.com/Arun270647/claude-permissions-app/releases/latest)
+1. **Download** the appropriate .dmg for your Mac:
+   - **Apple Silicon (M1/M2/M3/M4)**: [ClaudePrompter-macOS-arm64-v1.0.1.dmg](https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.1/ClaudePrompter-macOS-arm64-v1.0.1.dmg)
+   - **Intel Mac**: [ClaudePrompter-macOS-x64-v1.0.1.dmg](https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.1/ClaudePrompter-macOS-x64-v1.0.1.dmg)
 
-2. **Make it executable and run**
-   ```bash
-   chmod +x ~/Downloads/ClaudePermissionAssistant-macOS-*
-   ./Downloads/ClaudePermissionAssistant-macOS-*
-   ```
+2. **Install from DMG**
+   - Double-click the downloaded .dmg file
+   - Drag the app to Applications folder (or run directly)
+   - macOS may block it on first run (not notarized yet)
+   - Right-click the app → Open → Click "Open" to confirm
 
 3. **Grant permissions**
-   - macOS will block it on first run (not notarized)
-   - Right-click the file → Open → Click "Open" to confirm
-   - Grant Accessibility permissions in System Settings
+   - Grant Accessibility permissions when prompted
+   - System Settings → Privacy & Security → Accessibility
+   - Enable for Claude Prompter
+
+See [MACOS_SETUP.md](docs/MACOS_SETUP.md) for detailed macOS setup instructions.
 
 ## Quick Start
 
@@ -113,7 +124,7 @@ Monitor multiple terminals with real-time statistics:
 
 ```
 ┌─────────────────────────────────────────┐
-│  CLAUDE PERMISSION ASSISTANT            │
+│  CLAUDE PROMPTER v1.0.1                 │
 ├─────────────────────────────────────────┤
 │  Statistics                             │
 │  Prompts Detected: 42                   │
@@ -127,6 +138,58 @@ Monitor multiple terminals with real-time statistics:
 │  [+ Add Terminal]              [STOP ALL]│
 └─────────────────────────────────────────┘
 ```
+
+## What's Been Done
+
+### v1.0.1 (Current Release)
+✅ **Rebranded** from "Claude Permission Assistant" to "Claude Prompter"  
+✅ **Auto-update system** - Checks GitHub for updates automatically  
+✅ **Professional packaging** - .exe for Windows, .dmg for macOS  
+✅ **Improved macOS distribution** - Proper .app bundles with metadata  
+✅ **Modern website** - Deployed at [cpa-web-swart.vercel.app](https://cpa-web-swart.vercel.app/)  
+✅ **GitHub Actions CI/CD** - Automated builds and releases  
+✅ **Branch strategy** - Organized main/windows/macos/web branches  
+✅ **Comprehensive documentation** - Setup guides, tech stack, architecture
+
+### v1.0.0 (Initial Release)
+✅ Core automation functionality  
+✅ Multi-terminal support  
+✅ Cross-platform (Windows & macOS)  
+✅ System tray integration  
+✅ Real-time statistics  
+✅ 91 passing tests
+
+## Roadmap
+
+### Next Release (v1.0.2)
+- [ ] **macOS notarization** - Remove security warnings for new users
+- [ ] **Windows code signing** - Remove SmartScreen warnings
+- [ ] **Silent update mode** - Update in background without user interaction
+- [ ] **Update notifications** - Show changelog in dashboard
+
+### Future Enhancements
+- [ ] **iTerm2 support** (macOS)
+- [ ] **Alacritty/Kitty support** (cross-platform)
+- [ ] **Custom prompt patterns** - User-defined automation rules
+- [ ] **Dark/Light theme toggle** - UI customization
+- [ ] **Homebrew formula** (macOS) - `brew install claude-prompter`
+- [ ] **Chocolatey package** (Windows) - `choco install claude-prompter`
+- [ ] **Scoop manifest** (Windows) - `scoop install claude-prompter`
+- [ ] **Multi-language support** - i18n for global users
+- [ ] **Settings panel** - Customizable polling interval, cooldown duration
+- [ ] **Export/Import config** - Share configurations across machines
+- [ ] **Windows Terminal integration** - Deeper integration with Windows Terminal
+- [ ] **Terminal.app integration** - Deeper integration with macOS Terminal
+- [ ] **Sound notifications** - Optional audio feedback for approvals
+- [ ] **Logs viewer** - In-app log viewing and debugging
+
+### Under Consideration
+- [ ] **Linux support** (requires X11/Wayland automation research)
+- [ ] **VS Code extension** - Integrate with Claude in VS Code
+- [ ] **JetBrains plugin** - Support for IntelliJ, PyCharm, etc.
+- [ ] **Cloud sync** - Sync settings across devices
+- [ ] **Team mode** - Share configurations across teams
+- [ ] **Analytics dashboard** - Track automation efficiency over time
 
 ## Tech Stack
 
@@ -144,6 +207,11 @@ Monitor multiple terminals with real-time statistics:
 - AppleScript for text extraction
 - System Events for keyboard injection
 
+**Infrastructure:**
+- GitHub Actions for CI/CD
+- Vercel for website hosting
+- Auto-update manifest system
+
 **See [TECH_STACK.md](docs/TECH_STACK.md) for complete technical details.**
 
 ## Building from Source
@@ -160,7 +228,7 @@ Monitor multiple terminals with real-time statistics:
 git clone https://github.com/Arun270647/claude-permissions-app.git
 cd claude-permissions-app
 rebuild.bat
-# Output: publish/win-x64/ClaudePermissionAssistant.exe
+# Output: publish/win-x64/ClaudePrompter.exe
 ```
 
 **macOS:**
@@ -169,7 +237,8 @@ git clone https://github.com/Arun270647/claude-permissions-app.git
 cd claude-permissions-app
 chmod +x build-macos.sh
 ./build-macos.sh
-# Output: publish/osx-arm64/ClaudePermissionAssistant-macOS-arm64-v1.0.0
+# Output: releases/ClaudePrompter-macOS-arm64-v1.0.1.dmg
+#         releases/ClaudePrompter-macOS-x64-v1.0.1.dmg
 ```
 
 ### Run Tests
@@ -194,9 +263,18 @@ src/
 tests/
 └── ClaudePermissionAssistant.Automation.Tests/
 
-publish/
-├── win-x64/                                   # Windows executable
-└── osx-arm64/                                 # macOS executables
+docs/                                          # Comprehensive documentation
+├── TECH_STACK.md                             # Technical overview
+├── PROJECT_STRUCTURE.md                      # Codebase organization
+├── AUTO_UPDATE_ENABLED.md                    # Auto-update system docs
+├── BRANCHING_STRATEGY.md                     # Branch workflow
+└── BRANCH_STRUCTURE_COMPLETE.md             # Branch structure guide
+
+.github/
+└── workflows/
+    ├── release.yml                           # Release automation
+    ├── build-windows.yml                     # Windows CI
+    └── build-macos.yml                       # macOS CI
 ```
 
 See [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for detailed organization.
@@ -204,22 +282,28 @@ See [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for detailed organization.
 ## FAQ
 
 **Q: Is it safe?**  
-A: Yes. The code is open source, runs locally, has no network access, and doesn't collect any data. It only reads terminal text and sends keyboard input.
+A: Yes. The code is open source, runs locally, has no network access (except update checks), and doesn't collect any data. It only reads terminal text and sends keyboard input.
 
 **Q: Why does Windows block it?**  
-A: The app isn't code-signed (costs $200/year). Click "More info" → "Run anyway" to proceed. You can review the source code or build it yourself.
+A: The app isn't code-signed yet (costs $200/year). Click "More info" → "Run anyway" to proceed. You can review the source code or build it yourself.
 
 **Q: Why does macOS need Accessibility permissions?**  
 A: macOS requires Accessibility permissions to read terminal text and send keyboard input. The app cannot function without them.
 
 **Q: Does it work with all terminals?**  
-A: Windows: CMD, PowerShell, Windows Terminal. macOS: Terminal.app (iTerm2 support coming soon).
+A: **Windows:** CMD, PowerShell, Windows Terminal. **macOS:** Terminal.app (iTerm2 support coming soon).
 
 **Q: What if I don't want a specific prompt auto-approved?**  
 A: The app only approves prompts with "allow from this project" options. One-time "Yes" prompts are not auto-approved.
 
 **Q: Can I customize which terminals are monitored?**  
 A: Yes. Use the "+ Add Terminal" button in the dashboard to add/remove terminals.
+
+**Q: Does it auto-update?**  
+A: Yes! Starting with v1.0.1, the app checks for updates on launch and notifies you when a new version is available.
+
+**Q: Why the name change from "Claude Permission Assistant"?**  
+A: "Claude Prompter" is shorter, more memorable, and better reflects what the app does - it prompts on your behalf!
 
 ## Troubleshooting
 
@@ -238,6 +322,11 @@ A: Yes. Use the "+ Add Terminal" button in the dashboard to add/remove terminals
 - Minimize the dashboard window
 - Check logs in the app's data directory
 
+**Update not working**
+- Check internet connection
+- Manually download from [releases page](https://github.com/Arun270647/claude-permissions-app/releases)
+- See [AUTO_UPDATE_ENABLED.md](docs/AUTO_UPDATE_ENABLED.md) for troubleshooting
+
 ## Repository Branches
 
 This repository uses platform-specific branches:
@@ -248,12 +337,7 @@ This repository uses platform-specific branches:
 
 **Website:** Separate repository at **[cpa-web](https://github.com/Arun270647/cpa-web)**
 
-**Each branch shows only relevant content:**
-- `windows` branch: Windows source code only
-- `macos` branch: macOS source code only
-- `main` branch: Complete project (all platforms)
-
-See [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md) for workflow details.
+See [BRANCHING_STRATEGY.md](docs/BRANCHING_STRATEGY.md) for workflow details.
 
 ## Contributing
 
@@ -272,16 +356,6 @@ Contributions welcome! Please:
 
 See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
 
-## Roadmap
-
-- [ ] macOS notarization (remove security warnings)
-- [ ] Windows code signing (remove SmartScreen warnings)
-- [ ] iTerm2 support (macOS)
-- [ ] Alacritty/Kitty support
-- [ ] Auto-update mechanism
-- [ ] Homebrew formula (macOS)
-- [ ] Chocolatey package (Windows)
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
@@ -294,6 +368,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Links
 
+- **Website:** https://cpa-web-swart.vercel.app/
 - **Repository:** https://github.com/Arun270647/claude-permissions-app
 - **Issues:** https://github.com/Arun270647/claude-permissions-app/issues
 - **Releases:** https://github.com/Arun270647/claude-permissions-app/releases
@@ -305,4 +380,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 <p align="center">
 Made with ❤️ for a smoother Claude Code experience
+</p>
+
+<p align="center">
+  <strong>Claude Prompter v1.0.1</strong> - Your AI coding companion's best friend
 </p>
