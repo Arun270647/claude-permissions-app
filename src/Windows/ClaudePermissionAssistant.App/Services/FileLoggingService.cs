@@ -1,16 +1,29 @@
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using ClaudePermissionAssistant.App.Models;
 
 namespace ClaudePermissionAssistant.App.Services;
 
 /// <summary>
-/// Simple persistent file logging service
+/// Simple persistent file logging service with security sanitization
 /// </summary>
 public class FileLoggingService
 {
     private readonly string _logFilePath;
     private readonly object _lock = new();
+
+    // SECURITY FIX: Patterns to redact sensitive information from logs
+    private static readonly Regex[] SensitivePatterns = new[]
+    {
+        new Regex(@"password[=:\s]+\S+", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"token[=:\s]+\S+", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"api[-_]?key[=:\s]+\S+", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"secret[=:\s]+\S+", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"bearer\s+\S+", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"authorization[=:\s]+\S+", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"\b[A-Za-z0-9]{20,}\b", RegexOptions.Compiled), // Long alphanumeric strings (likely tokens)
+    };
 
     public FileLoggingService()
     {
@@ -24,6 +37,28 @@ public class FileLoggingService
         _logFilePath = Path.Combine(appDataPath, $"log_{DateTime.Now:yyyyMMdd}.txt");
     }
 
+    /// <summary>
+    /// SECURITY FIX: Sanitize log message to remove sensitive information
+    /// </summary>
+    private string SanitizeLogMessage(string message)
+    {
+        if (string.IsNullOrEmpty(message))
+            return message;
+
+        var sanitized = message;
+
+        foreach (var pattern in SensitivePatterns)
+        {
+            sanitized = pattern.Replace(sanitized, match =>
+            {
+                var prefix = match.Value.Substring(0, Math.Min(match.Value.Length, 10));
+                return $"{prefix}[REDACTED]";
+            });
+        }
+
+        return sanitized;
+    }
+
     public void Log(LogEntry entry)
     {
         try
@@ -31,7 +66,10 @@ public class FileLoggingService
             lock (_lock)
             {
                 var sb = new StringBuilder();
-                sb.AppendLine($"[{entry.Timestamp:yyyy-MM-dd HH:mm:ss}] {entry.Event}");
+
+                // SECURITY FIX: Sanitize event message
+                var sanitizedEvent = SanitizeLogMessage(entry.Event);
+                sb.AppendLine($"[{entry.Timestamp:yyyy-MM-dd HH:mm:ss}] {sanitizedEvent}");
 
                 if (entry.PromptType.HasValue)
                     sb.AppendLine($"  PromptType: {entry.PromptType}");
@@ -49,7 +87,11 @@ public class FileLoggingService
                     sb.AppendLine($"  Terminal PID: {entry.TerminalPid}");
 
                 if (!string.IsNullOrEmpty(entry.Error))
-                    sb.AppendLine($"  Error: {entry.Error}");
+                {
+                    // SECURITY FIX: Sanitize error messages
+                    var sanitizedError = SanitizeLogMessage(entry.Error);
+                    sb.AppendLine($"  Error: {sanitizedError}");
+                }
 
                 sb.AppendLine();
 

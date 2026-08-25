@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using ClaudePermissionAssistant.Core.Interfaces;
 using ClaudePermissionAssistant.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -107,19 +109,21 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
         // Step 3.2: Wait for focus transition
         Thread.Sleep(_config.FocusDelayMs);
 
-        // Step 3.3: Check foreground window (informational only - global lock prevents wrong window)
+        // SECURITY FIX: Make foreground window verification MANDATORY (abort on mismatch)
         var foregroundHwnd = GetForegroundWindow();
         bool foregroundVerified = foregroundHwnd == targetHwnd;
 
         if (!foregroundVerified)
         {
-            _logger.LogWarning("Foreground verification WARNING. Target: 0x{Target:X}, Actual: 0x{Actual:X} - proceeding anyway (global lock active)",
+            _logger.LogError("Foreground verification FAILED. Target: 0x{Target:X}, Actual: 0x{Actual:X} - ABORTING to prevent wrong window injection",
                 targetHwnd.ToInt64(), foregroundHwnd.ToInt64());
+
+            return CreateFailureResult(originalPrompt, startTime, optionNumber,
+                $"Foreground window mismatch - expected 0x{targetHwnd.ToInt64():X}, got 0x{foregroundHwnd.ToInt64():X}",
+                ExecutionState.Failed);
         }
-        else
-        {
-            _logger.LogInformation("Foreground verified: 0x{Hwnd:X}", foregroundHwnd.ToInt64());
-        }
+
+        _logger.LogInformation("Foreground verified: 0x{Hwnd:X}", foregroundHwnd.ToInt64());
 
         state = ExecutionState.Focused;
 
@@ -222,13 +226,21 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
         }
     }
 
+    /// <summary>
+    /// SECURITY FIX: Use cryptographic hashing instead of GetHashCode() for stable, collision-resistant identity
+    /// </summary>
     private string GetPromptKey(DetectedPrompt prompt)
     {
         // Use prompt region for stable identity, not full terminal buffer
         // PromptRegion contains just the question + options, so hash remains stable
         // as new lines are added to terminal buffer
         var textToHash = prompt.Request.PromptRegion ?? prompt.RawText;
-        var textHash = textToHash.GetHashCode();
+
+        // SECURITY FIX: Use SHA-256 instead of GetHashCode() for collision resistance
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(textToHash));
+        var textHash = Convert.ToHexString(hashBytes).Substring(0, 16).ToLowerInvariant();
+
         return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{textHash}";
     }
 

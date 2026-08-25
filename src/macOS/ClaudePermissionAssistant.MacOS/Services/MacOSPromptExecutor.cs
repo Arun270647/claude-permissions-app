@@ -2,6 +2,8 @@ using ClaudePermissionAssistant.Core.Interfaces;
 using ClaudePermissionAssistant.Core.Models;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace ClaudePermissionAssistant.MacOS.Services;
 
@@ -197,15 +199,46 @@ public class MacOSPromptExecutor : IClaudePermissionPromptExecutor
 
     private bool SendKeystroke(string key)
     {
+        // SECURITY FIX: Validate and sanitize input to prevent AppleScript injection
+        var sanitizedKey = ValidateAndSanitizeKeystroke(key);
+
+        if (sanitizedKey == null)
+        {
+            _logger.LogError("Invalid keystroke attempted: {Key}", key);
+            return false;
+        }
+
         // AppleScript to send keystroke to Terminal.app
         var script = $@"
 tell application ""System Events""
     tell process ""Terminal""
-        keystroke ""{key}""
+        keystroke ""{sanitizedKey}""
     end tell
 end tell
 ";
         return ExecuteAppleScript(script);
+    }
+
+    /// <summary>
+    /// SECURITY FIX: Whitelist-based validation for keystrokes
+    /// </summary>
+    private string? ValidateAndSanitizeKeystroke(string key)
+    {
+        // Whitelist: only allow single digits, letters, or special keywords
+        if (key == "return" || key == "tab" || key == "escape")
+        {
+            return key;
+        }
+
+        // Allow single alphanumeric characters
+        if (key.Length == 1 && char.IsLetterOrDigit(key[0]))
+        {
+            // Escape double quotes for AppleScript
+            return key.Replace("\"", "\\\"");
+        }
+
+        // Reject anything else
+        return null;
     }
 
     private bool ExecuteAppleScript(string script)
@@ -286,10 +319,18 @@ end tell
         }
     }
 
+    /// <summary>
+    /// SECURITY FIX: Use cryptographic hashing instead of GetHashCode() for stable, collision-resistant identity
+    /// </summary>
     private string GetPromptKey(DetectedPrompt prompt)
     {
         var textToHash = prompt.Request.PromptRegion ?? prompt.RawText;
-        var textHash = textToHash.GetHashCode();
+
+        // SECURITY FIX: Use SHA-256 instead of GetHashCode() for collision resistance
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(textToHash));
+        var textHash = Convert.ToHexString(hashBytes).Substring(0, 16).ToLowerInvariant();
+
         return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{textHash}";
     }
 

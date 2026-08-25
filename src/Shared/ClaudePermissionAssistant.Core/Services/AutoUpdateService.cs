@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -75,12 +77,26 @@ public class AutoUpdateService : IDisposable
     }
 
     /// <summary>
-    /// Download update with progress reporting
+    /// Download update with progress reporting and security verification
     /// </summary>
     public async Task<bool> DownloadAndApplyUpdateAsync(UpdateInfo updateInfo, IProgress<int>? progress = null)
     {
         try
         {
+            // SECURITY FIX: Enforce HTTPS
+            if (!updateInfo.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                UpdateCheckFailed?.Invoke(this, "Update URL must use HTTPS");
+                return false;
+            }
+
+            // SECURITY FIX: Verify checksum is provided
+            if (string.IsNullOrWhiteSpace(updateInfo.Sha256))
+            {
+                UpdateCheckFailed?.Invoke(this, "Update manifest missing SHA-256 checksum");
+                return false;
+            }
+
             var extension = _platform == "windows" ? ".exe" : ".dmg";
             var tempPath = Path.Combine(Path.GetTempPath(), $"ClaudePrompter-Update-{updateInfo.Version}{extension}");
 
@@ -116,6 +132,16 @@ public class AutoUpdateService : IDisposable
                 }
             }
 
+            // SECURITY FIX: Verify SHA-256 checksum
+            UpdateProgress?.Invoke(this, new UpdateProgressEventArgs("Verifying download integrity...", 95));
+
+            if (!VerifyChecksum(tempPath, updateInfo.Sha256))
+            {
+                File.Delete(tempPath);
+                UpdateCheckFailed?.Invoke(this, "Downloaded file checksum verification failed - possible tampering detected");
+                return false;
+            }
+
             UpdateProgress?.Invoke(this, new UpdateProgressEventArgs("Installing update...", 100));
 
             if (_platform == "windows")
@@ -136,10 +162,58 @@ public class AutoUpdateService : IDisposable
         }
     }
 
+    /// <summary>
+    /// SECURITY FIX: Verify SHA-256 checksum of downloaded file
+    /// </summary>
+    private bool VerifyChecksum(string filePath, string expectedSha256)
+    {
+        try
+        {
+            using var sha256 = SHA256.Create();
+            using var stream = File.OpenRead(filePath);
+            var hash = sha256.ComputeHash(stream);
+            var actualChecksum = Convert.ToHexString(hash).ToLowerInvariant();
+            var expectedChecksum = expectedSha256.Replace(":", "").Replace("-", "").ToLowerInvariant();
+
+            return actualChecksum.Equals(expectedChecksum, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// SECURITY FIX: Properly escape paths to prevent command injection
+    /// </summary>
+    private string EscapeWindowsBatchPath(string path)
+    {
+        // Validate path doesn't contain batch script metacharacters
+        if (path.Contains('&') || path.Contains('|') || path.Contains(';') ||
+            path.Contains('^') || path.Contains('<') || path.Contains('>'))
+        {
+            throw new SecurityException("Invalid characters in path");
+        }
+
+        // Return path with proper quoting
+        return $"\"{path.Replace("\"", "\"\"")}\"";
+    }
+
     private void ApplyWindowsUpdate(string updatePath)
     {
         var currentExe = Process.GetCurrentProcess().MainModule?.FileName;
+
+        if (string.IsNullOrEmpty(currentExe))
+        {
+            throw new InvalidOperationException("Cannot determine current executable path");
+        }
+
         var batchPath = Path.Combine(Path.GetTempPath(), "claude-prompter-update.bat");
+
+        // SECURITY FIX: Properly escape paths to prevent command injection
+        var escapedUpdatePath = EscapeWindowsBatchPath(updatePath);
+        var escapedCurrentExe = EscapeWindowsBatchPath(currentExe);
+        var escapedBatchPath = EscapeWindowsBatchPath(batchPath);
 
         var batchContent = $@"@echo off
 echo Updating Claude Prompter...
@@ -147,15 +221,15 @@ timeout /t 2 /nobreak > nul
 taskkill /F /IM ClaudePrompter.exe > nul 2>&1
 taskkill /F /IM ClaudePermissionAssistant.exe > nul 2>&1
 timeout /t 1 /nobreak > nul
-copy /Y ""{updatePath}"" ""{currentExe}"" > nul
-if exist ""{currentExe}"" (
-    start """" ""{currentExe}""
+copy /Y {escapedUpdatePath} {escapedCurrentExe} > nul
+if exist {escapedCurrentExe} (
+    start """" {escapedCurrentExe}
     echo Update complete!
 ) else (
     echo Update failed!
 )
-del ""{updatePath}""
-del ""{batchPath}""
+del {escapedUpdatePath}
+del {escapedBatchPath}
 ";
 
         File.WriteAllText(batchPath, batchContent);
@@ -170,21 +244,49 @@ del ""{batchPath}""
         Environment.Exit(0);
     }
 
+    /// <summary>
+    /// SECURITY FIX: Properly escape bash paths to prevent command injection
+    /// </summary>
+    private string EscapeBashPath(string path)
+    {
+        // Validate path doesn't contain shell metacharacters that could break out of quotes
+        if (path.Contains('\'') || path.Contains('$') || path.Contains('`') ||
+            path.Contains(';') || path.Contains('|') || path.Contains('&'))
+        {
+            throw new SecurityException("Invalid characters in path");
+        }
+
+        // Use single quotes for bash (stronger than double quotes)
+        // Single quotes prevent all expansion except you can't include a single quote
+        return $"'{path.Replace("'", "'\\''")}'";
+    }
+
     private void ApplyMacOSUpdate(string updatePath)
     {
         var currentExe = Process.GetCurrentProcess().MainModule?.FileName;
+
+        if (string.IsNullOrEmpty(currentExe))
+        {
+            throw new InvalidOperationException("Cannot determine current executable path");
+        }
+
         var scriptPath = Path.Combine(Path.GetTempPath(), "claude-prompter-update.sh");
 
+        // SECURITY FIX: Properly escape paths to prevent command injection
+        var escapedUpdatePath = EscapeBashPath(updatePath);
+        var escapedCurrentExe = EscapeBashPath(currentExe);
+        var escapedScriptPath = EscapeBashPath(scriptPath);
+
         var scriptContent = $@"#!/bin/bash
-echo ""Updating Claude Prompter...""
+echo 'Updating Claude Prompter...'
 sleep 2
 killall ClaudePrompter 2>/dev/null
 killall ClaudePermissionAssistant 2>/dev/null
 sleep 1
 
 # Handle DMG update
-if [[ ""{updatePath}"" == *.dmg ]]; then
-    MOUNT_DIR=$(hdiutil attach ""{updatePath}"" -nobrowse | tail -1 | awk '{{print $NF}}')
+if [[ {escapedUpdatePath} == *.dmg ]]; then
+    MOUNT_DIR=$(hdiutil attach {escapedUpdatePath} -nobrowse | tail -1 | awk '{{print $NF}}')
     if [ -d ""$MOUNT_DIR/ClaudePrompter.app"" ]; then
         rm -rf /Applications/ClaudePrompter.app
         cp -R ""$MOUNT_DIR/ClaudePrompter.app"" /Applications/
@@ -192,19 +294,19 @@ if [[ ""{updatePath}"" == *.dmg ]]; then
         open /Applications/ClaudePrompter.app
     fi
 else
-    cp -f ""{updatePath}"" ""{currentExe}""
-    chmod +x ""{currentExe}""
-    open ""{currentExe}""
+    cp -f {escapedUpdatePath} {escapedCurrentExe}
+    chmod +x {escapedCurrentExe}
+    open {escapedCurrentExe}
 fi
 
-echo ""Update complete!""
-rm -f ""{updatePath}""
-rm -f ""{scriptPath}""
+echo 'Update complete!'
+rm -f {escapedUpdatePath}
+rm -f {escapedScriptPath}
 ";
 
         File.WriteAllText(scriptPath, scriptContent);
 
-        var chmodProcess = Process.Start("chmod", $"+x \"{scriptPath}\"");
+        var chmodProcess = Process.Start("chmod", $"+x {EscapeBashPath(scriptPath)}");
         chmodProcess?.WaitForExit();
 
         Process.Start(new ProcessStartInfo
@@ -254,6 +356,9 @@ public class UpdateInfo
 
     [JsonPropertyName("url")]
     public string Url { get; set; } = string.Empty;
+
+    [JsonPropertyName("sha256")]
+    public string Sha256 { get; set; } = string.Empty;
 
     [JsonPropertyName("changelog")]
     public string Changelog { get; set; } = string.Empty;
