@@ -251,8 +251,8 @@ jobs:
       run: |
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
-        git checkout main
-        git pull origin main
+        git fetch origin main
+        git checkout -B main origin/main
         git add latest-*.json
         git commit -m "Update manifests for v${{ steps.version.outputs.VERSION }}" || echo "No changes to commit"
         git push origin main
