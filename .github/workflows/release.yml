@@ -45,13 +45,13 @@ jobs:
 
     - name: Rename Windows executable
       shell: bash
-      run: mv publish/win-x64/ClaudePermissionAssistant.exe publish/win-x64/ClaudePermissionAssistant-Windows-v${{ steps.version.outputs.VERSION }}.exe
+      run: mv publish/win-x64/ClaudePrompter.exe publish/win-x64/ClaudePrompter-Windows-v${{ steps.version.outputs.VERSION }}.exe
 
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
       with:
         name: windows-release
-        path: publish/win-x64/ClaudePermissionAssistant-Windows-v${{ steps.version.outputs.VERSION }}.exe
+        path: publish/win-x64/ClaudePrompter-Windows-v${{ steps.version.outputs.VERSION }}.exe
         retention-days: 90
 
   build-macos:
@@ -91,7 +91,7 @@ jobs:
 
     - name: Create .app bundle
       run: |
-        APP_NAME="ClaudePermissionAssistant"
+        APP_NAME="ClaudePrompter"
         APP_BUNDLE="publish/${APP_NAME}.app"
 
         # Create bundle structure
@@ -109,11 +109,11 @@ jobs:
         <plist version="1.0">
         <dict>
             <key>CFBundleExecutable</key>
-            <string>ClaudePermissionAssistant</string>
+            <string>ClaudePrompter</string>
             <key>CFBundleIdentifier</key>
-            <string>com.claudepermission.assistant</string>
+            <string>com.claudeprompter.app</string>
             <key>CFBundleName</key>
-            <string>Claude Permission Assistant</string>
+            <string>Claude Prompter</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
@@ -129,14 +129,14 @@ jobs:
     - name: Create ZIP package
       run: |
         cd publish
-        zip -r "ClaudePermissionAssistant-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}.zip" ClaudePermissionAssistant.app
+        zip -r "ClaudePrompter-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}.zip" ClaudePrompter.app
         cd ..
 
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:
         name: macos-release-${{ matrix.arch }}
-        path: publish/ClaudePermissionAssistant-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}.zip
+        path: publish/ClaudePrompter-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}.zip
         retention-days: 90
 
   create-release:
@@ -164,11 +164,11 @@ jobs:
         ### 📦 Downloads
 
         **Windows (10/11):**
-        - `ClaudePermissionAssistant-Windows-v${{ steps.version.outputs.VERSION }}.exe` - Just download and run!
+        - `ClaudePrompter-Windows-v${{ steps.version.outputs.VERSION }}.exe` - Just download and run!
 
         **macOS:**
-        - `ClaudePermissionAssistant-macOS-arm64-v${{ steps.version.outputs.VERSION }}.zip` - Apple Silicon (M1/M2/M3)
-        - `ClaudePermissionAssistant-macOS-x64-v${{ steps.version.outputs.VERSION }}.zip` - Intel Macs
+        - `ClaudePrompter-macOS-arm64-v${{ steps.version.outputs.VERSION }}.zip` - Apple Silicon (M1/M2/M3)
+        - `ClaudePrompter-macOS-x64-v${{ steps.version.outputs.VERSION }}.zip` - Intel Macs
 
         ### 🚀 Installation
 
@@ -219,7 +219,7 @@ jobs:
         cat > latest-windows.json << EOF
         {
           "version": "${{ steps.version.outputs.VERSION }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePermissionAssistant-Windows-v${{ steps.version.outputs.VERSION }}.exe",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePrompter-Windows-v${{ steps.version.outputs.VERSION }}.exe",
           "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
           "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         }
@@ -230,7 +230,7 @@ jobs:
         cat > latest-macos-arm64.json << EOF
         {
           "version": "${{ steps.version.outputs.VERSION }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePermissionAssistant-macOS-arm64-v${{ steps.version.outputs.VERSION }}.zip",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePrompter-macOS-arm64-v${{ steps.version.outputs.VERSION }}.zip",
           "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
           "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         }
@@ -241,7 +241,7 @@ jobs:
         cat > latest-macos-x64.json << EOF
         {
           "version": "${{ steps.version.outputs.VERSION }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePermissionAssistant-macOS-x64-v${{ steps.version.outputs.VERSION }}.zip",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePrompter-macOS-x64-v${{ steps.version.outputs.VERSION }}.zip",
           "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
           "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         }
