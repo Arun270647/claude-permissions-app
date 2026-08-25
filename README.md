@@ -11,6 +11,8 @@
   <img src="https://img.shields.io/badge/macOS-10.15+-000000?logo=apple&logoColor=white" alt="macOS 10.15+"/>
 </p>
 
+> 🌐 **[View the Website](https://arun270647.github.io/claude-permissions-app/)** • Modern landing page with downloads and documentation
+
 ## What It Does
 
 Claude Code asks for permission every time it wants to read files, write code, or run commands. This app automatically approves those prompts by selecting "Yes, allow from this project" so Claude can work without interruptions.
