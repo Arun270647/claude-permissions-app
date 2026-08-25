@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/macOS-10.15+-000000?logo=apple&logoColor=white" alt="macOS 10.15+"/>
 </p>
 
-> 🌐 **[View the Website](https://arun270647.github.io/claude-permissions-app/)** • Modern landing page with downloads and documentation
+> 🌐 **[View the Website](https://github.com/Arun270647/cpa-web)** • Modern landing page with downloads and documentation
 
 ## What It Does
 
@@ -245,12 +245,12 @@ This repository uses platform-specific branches:
 - **[main](https://github.com/Arun270647/claude-permissions-app)** - Production code (all platforms)
 - **[windows](https://github.com/Arun270647/claude-permissions-app/tree/windows)** - Windows development (WPF, UI Automation)
 - **[macos](https://github.com/Arun270647/claude-permissions-app/tree/macos)** - macOS development (Avalonia, AppleScript)
-- **[web](https://github.com/Arun270647/claude-permissions-app/tree/web)** - Website landing page
+
+**Website:** Separate repository at **[cpa-web](https://github.com/Arun270647/cpa-web)**
 
 **Each branch shows only relevant content:**
 - `windows` branch: Windows source code only
-- `macos` branch: macOS source code only  
-- `web` branch: Website files only
+- `macos` branch: macOS source code only
 - `main` branch: Complete project (all platforms)
 
 See [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md) for workflow details.
@@ -263,7 +263,7 @@ Contributions welcome! Please:
 2. Choose the right branch:
    - Windows-specific → `windows` branch
    - macOS-specific → `macos` branch
-   - Website → `web` branch
+   - Website → **[cpa-web repository](https://github.com/Arun270647/cpa-web)**
    - Cross-platform → `main` branch
 3. Run tests (`dotnet test`)
 4. Commit changes
