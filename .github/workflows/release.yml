@@ -89,14 +89,54 @@ jobs:
           -p:Version=${{ steps.version.outputs.VERSION }} \
           -o publish/osx-${{ matrix.arch }}
 
-    - name: Rename macOS executable
-      run: mv publish/osx-${{ matrix.arch }}/ClaudePermissionAssistant publish/osx-${{ matrix.arch }}/ClaudePermissionAssistant-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}
+    - name: Create .app bundle
+      run: |
+        APP_NAME="ClaudePermissionAssistant"
+        APP_BUNDLE="publish/${APP_NAME}.app"
+
+        # Create bundle structure
+        mkdir -p "${APP_BUNDLE}/Contents/MacOS"
+        mkdir -p "${APP_BUNDLE}/Contents/Resources"
+
+        # Copy executable
+        cp "publish/osx-${{ matrix.arch }}/${APP_NAME}" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
+        chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
+
+        # Create Info.plist
+        cat > "${APP_BUNDLE}/Contents/Info.plist" << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>ClaudePermissionAssistant</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.claudepermission.assistant</string>
+            <key>CFBundleName</key>
+            <string>Claude Permission Assistant</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>${{ steps.version.outputs.VERSION }}</string>
+            <key>CFBundleVersion</key>
+            <string>${{ steps.version.outputs.VERSION }}</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.15</string>
+        </dict>
+        </plist>
+        EOF
+
+    - name: Create ZIP package
+      run: |
+        cd publish
+        zip -r "ClaudePermissionAssistant-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}.zip" ClaudePermissionAssistant.app
+        cd ..
 
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:
         name: macos-release-${{ matrix.arch }}
-        path: publish/osx-${{ matrix.arch }}/ClaudePermissionAssistant-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}
+        path: publish/ClaudePermissionAssistant-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}.zip
         retention-days: 90
 
   create-release:
@@ -124,21 +164,33 @@ jobs:
         ### 📦 Downloads
 
         **Windows (10/11):**
-        - `ClaudePermissionAssistant-Windows-v${{ steps.version.outputs.VERSION }}.exe` (x64)
+        - `ClaudePermissionAssistant-Windows-v${{ steps.version.outputs.VERSION }}.exe` - Just download and run!
 
         **macOS:**
-        - `ClaudePermissionAssistant-macOS-arm64-v${{ steps.version.outputs.VERSION }}` (Apple Silicon M1/M2/M3)
-        - `ClaudePermissionAssistant-macOS-x64-v${{ steps.version.outputs.VERSION }}` (Intel)
+        - `ClaudePermissionAssistant-macOS-arm64-v${{ steps.version.outputs.VERSION }}.zip` - Apple Silicon (M1/M2/M3)
+        - `ClaudePermissionAssistant-macOS-x64-v${{ steps.version.outputs.VERSION }}.zip` - Intel Macs
 
         ### 🚀 Installation
 
-        **Windows:** Download the `.exe` and run it. Click "More info" → "Run anyway" if SmartScreen appears.
+        **Windows:**
+        1. Download the `.exe` file
+        2. Double-click to run
+        3. Click "More info" → "Run anyway" if SmartScreen appears
 
         **macOS:**
-        ```bash
-        chmod +x ClaudePermissionAssistant-macOS-*
-        ./ClaudePermissionAssistant-macOS-*
-        ```
+        1. Download the `.zip` file for your Mac
+        2. Extract (double-click the zip)
+        3. Drag `ClaudePermissionAssistant.app` to Applications folder
+        4. Right-click the app → "Open" (first time only to bypass security)
+        5. Grant Accessibility permissions when prompted
+
+        ### ✨ Features
+
+        - 🚀 Auto-approves Claude Code permission prompts in ~300ms
+        - 🖥️ Multi-terminal support
+        - 📊 Real-time statistics
+        - 🔒 100% local, no network access
+        - ⚡ Works on Windows 10/11 and macOS 10.15+
 
         ### 🔄 Auto-Update
 
@@ -178,7 +230,7 @@ jobs:
         cat > latest-macos-arm64.json << EOF
         {
           "version": "${{ steps.version.outputs.VERSION }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePermissionAssistant-macOS-arm64-v${{ steps.version.outputs.VERSION }}",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePermissionAssistant-macOS-arm64-v${{ steps.version.outputs.VERSION }}.zip",
           "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
           "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         }
@@ -189,7 +241,7 @@ jobs:
         cat > latest-macos-x64.json << EOF
         {
           "version": "${{ steps.version.outputs.VERSION }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePermissionAssistant-macOS-x64-v${{ steps.version.outputs.VERSION }}",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePermissionAssistant-macOS-x64-v${{ steps.version.outputs.VERSION }}.zip",
           "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
           "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         }
