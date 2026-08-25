@@ -148,8 +148,9 @@ public class AutoUpdateService : IDisposable
         var batchPath = Path.Combine(Path.GetTempPath(), "update.bat");
 
         var batchContent = $@"@echo off
-echo Updating Claude Permission Assistant...
+echo Updating Claude Prompter...
 timeout /t 2 /nobreak > nul
+taskkill /F /IM ClaudePrompter.exe > nul 2>&1
 taskkill /F /IM ClaudePermissionAssistant.exe > nul 2>&1
 timeout /t 1 /nobreak > nul
 copy /Y ""{updatePath}"" ""{currentExe}"" > nul
@@ -183,8 +184,9 @@ del ""{batchPath}""
         var scriptPath = Path.Combine(Path.GetTempPath(), "update.sh");
 
         var scriptContent = $@"#!/bin/bash
-echo ""Updating Claude Permission Assistant...""
+echo ""Updating Claude Prompter...""
 sleep 2
+killall ClaudePrompter 2>/dev/null
 killall ClaudePermissionAssistant 2>/dev/null
 sleep 1
 cp -f ""{updatePath}"" ""{currentExe}""
