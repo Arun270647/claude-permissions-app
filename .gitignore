@@ -96,3 +96,6 @@ Desktop.ini
 
 # Publish output
 publish/
+
+# Auto-generated manifest files
+latest-*.json
