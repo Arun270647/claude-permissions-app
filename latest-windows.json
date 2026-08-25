@@ -2,7 +2,7 @@
   "version": "1.0.1",
   "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.1/ClaudePrompter-Windows-v1.0.1.exe",
   "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.1",
-  "patchNotes": "Claude Prompter v1.0.1\n\n• Rebranded from Claude Permission Assistant to Claude Prompter\n• Added mandatory auto-update system\n• Professional .exe packaging for Windows\n• Improved UI with new dashboard design\n• Enhanced prompt detection accuracy\n• Added system tray improvements\n• Background update checks every 30 minutes\n• Patch notes displayed before updates",
-  "publishedAt": "2026-08-25T08:38:25Z",
+  "patchNotes": "Claude Prompter v1.0.1\n\nSee full release notes at:\nhttps://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.1",
+  "publishedAt": "2026-08-25T09:02:20Z",
   "mandatory": true
 }
