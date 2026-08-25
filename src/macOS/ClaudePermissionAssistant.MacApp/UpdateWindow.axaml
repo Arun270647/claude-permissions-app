@@ -1,0 +1,59 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ClaudePermissionAssistant.MacApp.UpdateWindow"
+        Title="Claude Prompter - Update Available"
+        Width="550" Height="500"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False"
+        Background="#1a1a2e">
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="Update Available!" FontSize="24" FontWeight="Bold" Foreground="#00F0FF"/>
+            <TextBlock Name="VersionTextBlock" FontSize="14" Foreground="#aaaaaa" Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <!-- Mandatory Notice -->
+        <Border Grid.Row="1" Background="#2a1a1a" CornerRadius="5" Margin="0,5,0,10" Padding="12">
+            <TextBlock Text="This update is required. Please update to continue using Claude Prompter."
+                       Foreground="#FF6B6B" FontSize="12" TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- Patch Notes -->
+        <Border Grid.Row="2" Background="#16213e" CornerRadius="5" Margin="0,5,0,10" Padding="15">
+            <ScrollViewer>
+                <StackPanel>
+                    <TextBlock Text="What's New" FontSize="16" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+                    <TextBlock Name="PatchNotesTextBlock" FontSize="12" Foreground="#cccccc"
+                               TextWrapping="Wrap" LineHeight="22"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Progress -->
+        <StackPanel Grid.Row="3" Margin="0,5,0,10">
+            <TextBlock Name="StatusTextBlock" Text="Ready to update" FontSize="12" Foreground="#aaaaaa" Margin="0,0,0,5"/>
+            <ProgressBar Name="UpdateProgressBar" Height="8" Minimum="0" Maximum="100" Value="0"
+                         Background="#333333" Foreground="#00F0FF"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,0">
+            <Button Name="UpdateButton" Content="Update Now" Width="180" Height="40"
+                    Background="#00F0FF" Foreground="#1a1a2e" FontSize="14" FontWeight="Bold"
+                    Click="UpdateButton_Click" Cursor="Hand"/>
+            <Button Name="ExitButton" Content="Exit App" Width="100" Height="40"
+                    Background="#333333" Foreground="#aaaaaa" FontSize="12"
+                    Margin="15,0,0,0" Click="ExitButton_Click" Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</Window>

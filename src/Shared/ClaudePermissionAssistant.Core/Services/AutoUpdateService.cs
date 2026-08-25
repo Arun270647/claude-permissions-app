@@ -6,19 +6,21 @@ using System.Text.Json.Serialization;
 namespace ClaudePermissionAssistant.Core.Services;
 
 /// <summary>
-/// Handles automatic updates by checking GitHub releases
+/// Handles automatic updates by checking GitHub releases.
+/// Updates are mandatory - users must update before using the app.
 /// </summary>
 public class AutoUpdateService : IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly string _currentVersion;
-    private readonly string _platform; // "windows" or "macos"
+    private readonly string _platform;
     private readonly Timer? _updateCheckTimer;
     private readonly string _updateManifestUrl;
 
     private const string GITHUB_REPO = "Arun270647/claude-permissions-app";
 
     public event EventHandler<UpdateAvailableEventArgs>? UpdateAvailable;
+    public event EventHandler<UpdateProgressEventArgs>? UpdateProgress;
     public event EventHandler<string>? UpdateCheckFailed;
 
     public AutoUpdateService(string currentVersion, string platform)
@@ -26,16 +28,12 @@ public class AutoUpdateService : IDisposable
         _currentVersion = currentVersion;
         _platform = platform.ToLower();
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", $"ClaudePermissionAssistant/{currentVersion}");
-
-        // Check for updates every 4 hours
-        _updateCheckTimer = new Timer(CheckForUpdatesCallback, null, TimeSpan.FromMinutes(5), TimeSpan.FromHours(4));
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", $"ClaudePrompter/{currentVersion}");
 
         // Determine correct manifest URL based on platform and architecture
         var manifestPlatform = _platform;
         if (_platform == "macos")
         {
-            // Detect architecture for macOS
             var arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture;
             manifestPlatform = arch == System.Runtime.InteropServices.Architecture.Arm64
                 ? "macos-arm64"
@@ -43,30 +41,31 @@ public class AutoUpdateService : IDisposable
         }
 
         _updateManifestUrl = $"https://raw.githubusercontent.com/{GITHUB_REPO}/main/latest-{manifestPlatform}.json";
+
+        // Background check every 30 minutes (for long-running sessions)
+        _updateCheckTimer = new Timer(CheckForUpdatesCallback, null, TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(30));
     }
 
     /// <summary>
-    /// Check for updates immediately
+    /// Check for updates immediately on startup. Returns update info if available.
     /// </summary>
     public async Task<UpdateInfo?> CheckForUpdatesAsync()
     {
         try
         {
-            // Fetch the latest version info from GitHub
             var response = await _httpClient.GetStringAsync(_updateManifestUrl);
             var updateInfo = JsonSerializer.Deserialize<UpdateInfo>(response);
 
             if (updateInfo == null)
                 return null;
 
-            // Compare versions
             if (IsNewerVersion(updateInfo.Version, _currentVersion))
             {
                 UpdateAvailable?.Invoke(this, new UpdateAvailableEventArgs(updateInfo));
                 return updateInfo;
             }
 
-            return null; // Already up to date
+            return null;
         }
         catch (Exception ex)
         {
@@ -76,18 +75,17 @@ public class AutoUpdateService : IDisposable
     }
 
     /// <summary>
-    /// Download and apply update
+    /// Download update with progress reporting
     /// </summary>
     public async Task<bool> DownloadAndApplyUpdateAsync(UpdateInfo updateInfo, IProgress<int>? progress = null)
     {
         try
         {
-            var tempPath = Path.Combine(Path.GetTempPath(), $"ClaudePermissionAssistant-Update-{updateInfo.Version}");
+            var extension = _platform == "windows" ? ".exe" : ".dmg";
+            var tempPath = Path.Combine(Path.GetTempPath(), $"ClaudePrompter-Update-{updateInfo.Version}{extension}");
 
-            if (_platform == "windows")
-                tempPath += ".exe";
+            UpdateProgress?.Invoke(this, new UpdateProgressEventArgs("Downloading update...", 0));
 
-            // Download the update
             using (var response = await _httpClient.GetAsync(updateInfo.Url, HttpCompletionOption.ResponseHeadersRead))
             {
                 response.EnsureSuccessStatusCode();
@@ -110,19 +108,16 @@ public class AutoUpdateService : IDisposable
                         {
                             var progressPercent = (int)((downloadedBytes * 100) / totalBytes);
                             progress?.Report(progressPercent);
+                            UpdateProgress?.Invoke(this, new UpdateProgressEventArgs(
+                                $"Downloading... {downloadedBytes / 1024 / 1024}MB / {totalBytes / 1024 / 1024}MB",
+                                progressPercent));
                         }
                     }
                 }
             }
 
-            // Make executable on Unix-like systems
-            if (_platform == "macos")
-            {
-                var chmodProcess = Process.Start("chmod", $"+x \"{tempPath}\"");
-                chmodProcess?.WaitForExit();
-            }
+            UpdateProgress?.Invoke(this, new UpdateProgressEventArgs("Installing update...", 100));
 
-            // Apply the update based on platform
             if (_platform == "windows")
             {
                 ApplyWindowsUpdate(tempPath);
@@ -143,9 +138,8 @@ public class AutoUpdateService : IDisposable
 
     private void ApplyWindowsUpdate(string updatePath)
     {
-        // Create a batch script to replace the exe after the app exits
         var currentExe = Process.GetCurrentProcess().MainModule?.FileName;
-        var batchPath = Path.Combine(Path.GetTempPath(), "update.bat");
+        var batchPath = Path.Combine(Path.GetTempPath(), "claude-prompter-update.bat");
 
         var batchContent = $@"@echo off
 echo Updating Claude Prompter...
@@ -166,7 +160,6 @@ del ""{batchPath}""
 
         File.WriteAllText(batchPath, batchContent);
 
-        // Start the batch script and exit current app
         Process.Start(new ProcessStartInfo
         {
             FileName = batchPath,
@@ -179,9 +172,8 @@ del ""{batchPath}""
 
     private void ApplyMacOSUpdate(string updatePath)
     {
-        // Create a shell script to replace the app after it exits
         var currentExe = Process.GetCurrentProcess().MainModule?.FileName;
-        var scriptPath = Path.Combine(Path.GetTempPath(), "update.sh");
+        var scriptPath = Path.Combine(Path.GetTempPath(), "claude-prompter-update.sh");
 
         var scriptContent = $@"#!/bin/bash
 echo ""Updating Claude Prompter...""
@@ -189,25 +181,32 @@ sleep 2
 killall ClaudePrompter 2>/dev/null
 killall ClaudePermissionAssistant 2>/dev/null
 sleep 1
-cp -f ""{updatePath}"" ""{currentExe}""
-chmod +x ""{currentExe}""
-if [ -f ""{currentExe}"" ]; then
-    open ""{currentExe}""
-    echo ""Update complete!""
+
+# Handle DMG update
+if [[ ""{updatePath}"" == *.dmg ]]; then
+    MOUNT_DIR=$(hdiutil attach ""{updatePath}"" -nobrowse | tail -1 | awk '{{print $NF}}')
+    if [ -d ""$MOUNT_DIR/ClaudePrompter.app"" ]; then
+        rm -rf /Applications/ClaudePrompter.app
+        cp -R ""$MOUNT_DIR/ClaudePrompter.app"" /Applications/
+        hdiutil detach ""$MOUNT_DIR"" -quiet
+        open /Applications/ClaudePrompter.app
+    fi
 else
-    echo ""Update failed!""
+    cp -f ""{updatePath}"" ""{currentExe}""
+    chmod +x ""{currentExe}""
+    open ""{currentExe}""
 fi
-rm ""{updatePath}""
-rm ""{scriptPath}""
+
+echo ""Update complete!""
+rm -f ""{updatePath}""
+rm -f ""{scriptPath}""
 ";
 
         File.WriteAllText(scriptPath, scriptContent);
 
-        // Make script executable
         var chmodProcess = Process.Start("chmod", $"+x \"{scriptPath}\"");
         chmodProcess?.WaitForExit();
 
-        // Start the script and exit current app
         Process.Start(new ProcessStartInfo
         {
             FileName = scriptPath,
@@ -222,7 +221,6 @@ rm ""{scriptPath}""
     {
         try
         {
-            // Remove 'v' prefix if present
             latestVersion = latestVersion.TrimStart('v');
             currentVersion = currentVersion.TrimStart('v');
 
@@ -260,8 +258,14 @@ public class UpdateInfo
     [JsonPropertyName("changelog")]
     public string Changelog { get; set; } = string.Empty;
 
+    [JsonPropertyName("patchNotes")]
+    public string PatchNotes { get; set; } = string.Empty;
+
     [JsonPropertyName("publishedAt")]
     public string PublishedAt { get; set; } = string.Empty;
+
+    [JsonPropertyName("mandatory")]
+    public bool Mandatory { get; set; } = true;
 }
 
 public class UpdateAvailableEventArgs : EventArgs
@@ -271,5 +275,17 @@ public class UpdateAvailableEventArgs : EventArgs
     public UpdateAvailableEventArgs(UpdateInfo updateInfo)
     {
         UpdateInfo = updateInfo;
+    }
+}
+
+public class UpdateProgressEventArgs : EventArgs
+{
+    public string Message { get; }
+    public int ProgressPercent { get; }
+
+    public UpdateProgressEventArgs(string message, int progressPercent)
+    {
+        Message = message;
+        ProgressPercent = progressPercent;
     }
 }
