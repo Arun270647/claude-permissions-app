@@ -1,0 +1,206 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags like v1.0.0, v1.0.1, etc.
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Extract version
+      id: version
+      shell: bash
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Restore Windows dependencies
+      run: |
+        dotnet restore src/Windows/ClaudePermissionAssistant.Automation/ClaudePermissionAssistant.Automation.csproj -r win-x64
+        dotnet restore src/Windows/ClaudePermissionAssistant.App/ClaudePermissionAssistant.App.csproj -r win-x64
+
+    - name: Publish Windows app
+      run: |
+        dotnet publish src/Windows/ClaudePermissionAssistant.App/ClaudePermissionAssistant.App.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained true `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:EnableCompressionInSingleFile=true `
+          -p:Version=${{ steps.version.outputs.VERSION }} `
+          -o publish/win-x64
+
+    - name: Rename Windows executable
+      shell: bash
+      run: mv publish/win-x64/ClaudePermissionAssistant.exe publish/win-x64/ClaudePermissionAssistant-Windows-v${{ steps.version.outputs.VERSION }}.exe
+
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-release
+        path: publish/win-x64/ClaudePermissionAssistant-Windows-v${{ steps.version.outputs.VERSION }}.exe
+        retention-days: 90
+
+  build-macos:
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        arch: [arm64, x64]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Extract version
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Restore macOS dependencies
+      run: |
+        dotnet restore src/macOS/ClaudePermissionAssistant.MacOS/ClaudePermissionAssistant.MacOS.csproj -r osx-${{ matrix.arch }}
+        dotnet restore src/macOS/ClaudePermissionAssistant.MacApp/ClaudePermissionAssistant.MacApp.csproj -r osx-${{ matrix.arch }}
+
+    - name: Publish macOS app
+      run: |
+        dotnet publish src/macOS/ClaudePermissionAssistant.MacApp/ClaudePermissionAssistant.MacApp.csproj \
+          -c Release \
+          -r osx-${{ matrix.arch }} \
+          --self-contained true \
+          -p:PublishSingleFile=true \
+          -p:Version=${{ steps.version.outputs.VERSION }} \
+          -o publish/osx-${{ matrix.arch }}
+
+    - name: Rename macOS executable
+      run: mv publish/osx-${{ matrix.arch }}/ClaudePermissionAssistant publish/osx-${{ matrix.arch }}/ClaudePermissionAssistant-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}
+
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-release-${{ matrix.arch }}
+        path: publish/osx-${{ matrix.arch }}/ClaudePermissionAssistant-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}
+        retention-days: 90
+
+  create-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Extract version
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: release-assets
+
+    - name: Create release notes
+      run: |
+        cat > release-notes.md << 'EOF'
+        ## 🎉 Release v${{ steps.version.outputs.VERSION }}
+
+        ### 📦 Downloads
+
+        **Windows (10/11):**
+        - `ClaudePermissionAssistant-Windows-v${{ steps.version.outputs.VERSION }}.exe` (x64)
+
+        **macOS:**
+        - `ClaudePermissionAssistant-macOS-arm64-v${{ steps.version.outputs.VERSION }}` (Apple Silicon M1/M2/M3)
+        - `ClaudePermissionAssistant-macOS-x64-v${{ steps.version.outputs.VERSION }}` (Intel)
+
+        ### 🚀 Installation
+
+        **Windows:** Download the `.exe` and run it. Click "More info" → "Run anyway" if SmartScreen appears.
+
+        **macOS:**
+        ```bash
+        chmod +x ClaudePermissionAssistant-macOS-*
+        ./ClaudePermissionAssistant-macOS-*
+        ```
+
+        ### 🔄 Auto-Update
+
+        If you already have a previous version installed, the app will automatically update itself within 4 hours (or on next restart).
+
+        ---
+
+        **Full Changelog:** https://github.com/Arun270647/claude-permissions-app/compare/v${{ steps.version.outputs.VERSION }}
+        EOF
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release-assets/windows-release/*
+          release-assets/macos-release-arm64/*
+          release-assets/macos-release-x64/*
+        body_path: release-notes.md
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Generate Windows update manifest
+      run: |
+        cat > latest-windows.json << EOF
+        {
+          "version": "${{ steps.version.outputs.VERSION }}",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePermissionAssistant-Windows-v${{ steps.version.outputs.VERSION }}.exe",
+          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
+          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        }
+        EOF
+
+    - name: Generate macOS arm64 update manifest
+      run: |
+        cat > latest-macos-arm64.json << EOF
+        {
+          "version": "${{ steps.version.outputs.VERSION }}",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePermissionAssistant-macOS-arm64-v${{ steps.version.outputs.VERSION }}",
+          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
+          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        }
+        EOF
+
+    - name: Generate macOS x64 update manifest
+      run: |
+        cat > latest-macos-x64.json << EOF
+        {
+          "version": "${{ steps.version.outputs.VERSION }}",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePermissionAssistant-macOS-x64-v${{ steps.version.outputs.VERSION }}",
+          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
+          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        }
+        EOF
+
+    - name: Commit update manifests to main
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git checkout main
+        git pull origin main
+        git add latest-*.json
+        git commit -m "Update manifests for v${{ steps.version.outputs.VERSION }}" || echo "No changes to commit"
+        git push origin main

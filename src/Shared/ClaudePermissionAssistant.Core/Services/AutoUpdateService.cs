@@ -31,7 +31,18 @@ public class AutoUpdateService : IDisposable
         // Check for updates every 4 hours
         _updateCheckTimer = new Timer(CheckForUpdatesCallback, null, TimeSpan.FromMinutes(5), TimeSpan.FromHours(4));
 
-        _updateManifestUrl = $"https://raw.githubusercontent.com/{GITHUB_REPO}/main/latest-{_platform}.json";
+        // Determine correct manifest URL based on platform and architecture
+        var manifestPlatform = _platform;
+        if (_platform == "macos")
+        {
+            // Detect architecture for macOS
+            var arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture;
+            manifestPlatform = arch == System.Runtime.InteropServices.Architecture.Arm64
+                ? "macos-arm64"
+                : "macos-x64";
+        }
+
+        _updateManifestUrl = $"https://raw.githubusercontent.com/{GITHUB_REPO}/main/latest-{manifestPlatform}.json";
     }
 
     /// <summary>
