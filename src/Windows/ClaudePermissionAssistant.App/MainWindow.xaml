@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ClaudePermissionAssistant.App"
         mc:Ignorable="d"
-        Title="Claude Permission Assistant - UI Automation Inspector" Height="700" Width="1200"
+        Title="Claude Prompter v1.0.1 - UI Automation Inspector" Height="700" Width="1200"
         WindowStartupLocation="CenterScreen">
     <DockPanel>
         <!-- Menu Bar -->

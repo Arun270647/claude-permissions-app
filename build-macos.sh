@@ -6,12 +6,12 @@
 
 set -e
 
-VERSION="1.0.0"
-APP_NAME="ClaudePermissionAssistant"
+VERSION="1.0.1"
+APP_NAME="ClaudePrompter"
 BUILD_DIR="publish"
 OUTPUT_DIR="releases"
 
-echo "🍎 Building Claude Permission Assistant for macOS..."
+echo "🍎 Building Claude Prompter for macOS..."
 
 # Clean previous builds
 rm -rf $BUILD_DIR
@@ -45,11 +45,11 @@ create_app_bundle() {
     <key>CFBundleExecutable</key>
     <string>${APP_NAME}</string>
     <key>CFBundleIdentifier</key>
-    <string>com.claudepermission.assistant</string>
+    <string>com.claudeprompter.app</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>${APP_NAME}</string>
+    <string>Claude Prompter</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

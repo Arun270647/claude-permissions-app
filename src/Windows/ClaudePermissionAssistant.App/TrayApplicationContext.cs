@@ -31,7 +31,7 @@ public class TrayApplicationContext : IDisposable
         _trayIcon = Activator.CreateInstance(taskbarIconType) ?? throw new InvalidOperationException("Failed to create TaskbarIcon instance");
 
         // Set properties
-        taskbarIconType.GetProperty("ToolTipText")?.SetValue(_trayIcon, "Claude Permission Assistant\nStatus: Stopped");
+        taskbarIconType.GetProperty("ToolTipText")?.SetValue(_trayIcon, "Claude Prompter\nStatus: Stopped");
         taskbarIconType.GetProperty("ContextMenu")?.SetValue(_trayIcon, CreateContextMenu());
 
         // Subscribe to double-click event

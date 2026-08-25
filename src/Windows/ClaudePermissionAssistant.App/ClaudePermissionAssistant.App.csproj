@@ -8,12 +8,12 @@
     <UseWPF>true</UseWPF>
 
     <!-- App Identity -->
-    <AssemblyName>ClaudePermissionAssistant</AssemblyName>
+    <AssemblyName>ClaudePrompter</AssemblyName>
     <RootNamespace>ClaudePermissionAssistant.App</RootNamespace>
-    <Product>Claude Permission Assistant</Product>
+    <Product>Claude Prompter</Product>
     <Description>Automatically approves Claude Code permission prompts</Description>
-    <Version>1.0.0</Version>
-    <Authors>Claude Permission Assistant Contributors</Authors>
+    <Version>1.0.1</Version>
+    <Authors>Claude Prompter Contributors</Authors>
 
     <!-- Icon -->
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>

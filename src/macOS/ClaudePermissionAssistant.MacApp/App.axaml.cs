@@ -8,7 +8,7 @@ namespace ClaudePermissionAssistant.MacApp;
 public partial class App : Application
 {
     private AutoUpdateService? _autoUpdateService;
-    private const string CURRENT_VERSION = "1.0.0"; // Update this for each release
+    private const string CURRENT_VERSION = "1.0.1"; // Update this for each release
 
     public override void Initialize()
     {

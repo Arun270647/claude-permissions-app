@@ -13,7 +13,7 @@ public partial class App : System.Windows.Application
     private TrayApplicationContext? _trayContext;
     private AutoUpdateService? _autoUpdateService;
 
-    private const string CURRENT_VERSION = "1.0.0"; // Update this for each release
+    private const string CURRENT_VERSION = "1.0.1"; // Update this for each release
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -25,7 +25,7 @@ public partial class App : System.Windows.Application
         if (!_singleInstanceManager.IsFirstInstance)
         {
             MessageBox.Show(
-                "Claude Permission Assistant is already running.\n\n" +
+                "Claude Prompter is already running.\n\n" +
                 "Check the system tray for the application icon.",
                 "Already Running",
                 MessageBoxButton.OK,
