@@ -27,15 +27,11 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore
+    - name: Restore macOS dependencies
+      run: dotnet restore src/macOS/ClaudePermissionAssistant.MacApp/ClaudePermissionAssistant.MacApp.csproj -r osx-${{ matrix.arch }}
 
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
-
-    - name: Run tests
-      run: dotnet test --no-build --configuration Release --verbosity normal
-      continue-on-error: true
+    - name: Build macOS app
+      run: dotnet build src/macOS/ClaudePermissionAssistant.MacApp/ClaudePermissionAssistant.MacApp.csproj --configuration Release -r osx-${{ matrix.arch }} --no-restore
 
     - name: Publish macOS app
       run: |

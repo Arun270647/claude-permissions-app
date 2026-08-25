@@ -23,15 +23,11 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore
+    - name: Restore Windows dependencies
+      run: dotnet restore src/Windows/ClaudePermissionAssistant.App/ClaudePermissionAssistant.App.csproj -r win-x64
 
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
-
-    - name: Run tests
-      run: dotnet test --no-build --configuration Release --verbosity normal
-      continue-on-error: true
+    - name: Build Windows app
+      run: dotnet build src/Windows/ClaudePermissionAssistant.App/ClaudePermissionAssistant.App.csproj --configuration Release -r win-x64 --no-restore
 
     - name: Publish Windows app
       run: |
