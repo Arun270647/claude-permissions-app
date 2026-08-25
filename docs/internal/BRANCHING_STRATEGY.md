@@ -1,303 +1,227 @@
 # Branching Strategy
 
-This project uses a platform-specific branching strategy to organize development across Windows, macOS, and web platforms.
+This project uses a **single-branch strategy** with folder-based organization for platform-specific code.
 
 ## Branch Structure
 
 ```
-main        ← Production-ready code, releases cut from here
-├── windows ← Windows-specific development
-├── macos   ← macOS-specific development
-└── web     ← Website/landing page development (future)
+main        ← All development happens here
 ```
 
-## Branch Descriptions
+That's it! One branch, simple workflow.
 
-### `main` (default)
-- **Purpose:** Production-ready code
-- **Contains:** All cross-platform code, releases, stable features
-- **Protected:** Yes (requires PR review before merge)
-- **Releases:** All version tags created from this branch
+## Folder Structure
 
-**When to use:**
-- Creating releases
-- Hotfixes that affect all platforms
-- Documentation updates that apply to all platforms
+Platform-specific code is organized in folders:
 
-### `windows`
-- **Purpose:** Windows-specific development
-- **Contains:** Windows app code (`src/Windows/`), Windows-specific features
-- **Merges to:** `main` via PR
+```
+src/
+├── Shared/
+│   └── ClaudePermissionAssistant.Core/     # Cross-platform parser, models, auto-update
+├── Windows/
+│   ├── ClaudePermissionAssistant.App/      # WPF UI
+│   └── ClaudePermissionAssistant.Automation/  # Windows UI Automation
+└── macOS/
+    ├── ClaudePermissionAssistant.MacApp/   # Avalonia UI
+    └── ClaudePermissionAssistant.MacOS/    # AppleScript automation
+```
 
-**When to use:**
-- Working on Windows UI (WPF)
-- Windows automation improvements
-- Windows-specific bug fixes
-- Windows build/publish changes
+## Why Single Branch?
 
-### `macos`
-- **Purpose:** macOS-specific development
-- **Contains:** macOS app code (`src/macOS/`), macOS-specific features
-- **Merges to:** `main` via PR
+**Previously:** Separate `windows`, `macos` branches
+- ❌ Complex to maintain
+- ❌ Hard to sync shared code
+- ❌ Merge conflicts
+- ❌ Contributors confused about which branch to use
 
-**When to use:**
-- Working on macOS UI (Avalonia)
-- AppleScript improvements
-- macOS-specific bug fixes
-- macOS build/publish changes
-
-### `web`
-- **Purpose:** Website/landing page development (future)
-- **Contains:** Website source, download page, documentation site
-- **Merges to:** `main` via PR
-
-**When to use:**
-- Building project website
-- Creating download page
-- Documentation improvements for web
+**Now:** Single `main` branch
+- ✅ Simple workflow
+- ✅ Shared code immediately benefits both platforms
+- ✅ No branch syncing needed
+- ✅ Easier for contributors
+- ✅ CI/CD handles platform builds automatically
 
 ## Workflow
 
 ### Making Changes
 
-#### For Cross-Platform Changes (e.g., parser, models)
+All changes go directly to `main`:
 
 ```bash
-# Work on main branch
 git checkout main
 git pull origin main
 
-# Make changes to src/Shared/
-# ... edit files ...
+# Make your changes
+# - Windows-specific → edit src/Windows/
+# - macOS-specific → edit src/macOS/
+# - Shared code → edit src/Shared/
 
-# Commit and push
 git add .
-git commit -m "Update prompt parser logic"
+git commit -m "Your descriptive commit message"
 git push origin main
 ```
 
-#### For Platform-Specific Changes
+### For Contributors
 
-**Windows Example:**
-```bash
-# Switch to windows branch
-git checkout windows
-git pull origin windows
+1. Fork the repository
+2. Create a feature branch from `main`:
+   ```bash
+   git checkout -b feature/my-feature
+   ```
+3. Make your changes
+4. Run tests: `dotnet test`
+5. Push to your fork
+6. Open Pull Request to `main`
 
-# Merge latest main to stay current
-git merge main
+## Continuous Integration
 
-# Make Windows-specific changes
-# ... edit src/Windows/ files ...
+GitHub Actions automatically builds when code changes:
 
-# Commit
-git add .
-git commit -m "Add Windows system tray icon improvements"
-git push origin windows
+**build-windows.yml** triggers on:
+- `src/Windows/**` changes
+- `src/Shared/**` changes
+- `.github/workflows/build-windows.yml` changes
 
-# When ready, create PR to merge back to main
-```
+**build-macos.yml** triggers on:
+- `src/macOS/**` changes
+- `src/Shared/**` changes
+- `.github/workflows/build-macos.yml` changes
 
-**macOS Example:**
-```bash
-# Switch to macos branch
-git checkout macos
-git pull origin macos
-
-# Merge latest main
-git merge main
-
-# Make macOS-specific changes
-# ... edit src/macOS/ files ...
-
-# Commit
-git add .
-git commit -m "Fix AppleScript text extraction for iTerm2"
-git push origin macos
-
-# Create PR to merge back to main
-```
-
-**Web Example:**
-```bash
-# Switch to web branch
-git checkout web
-git pull origin web
-
-# Make website changes
-# ... edit website files ...
-
-# Commit
-git add .
-git commit -m "Add download page with installation guide"
-git push origin web
-
-# Create PR to merge back to main
-```
-
-### Pull Request Flow
-
-```
-1. Developer creates feature on platform branch (windows/macos/web)
-2. Developer opens PR: [platform-branch] → main
-3. CI runs tests (GitHub Actions)
-4. Reviewer approves
-5. Merge to main
-6. Main automatically deploys/releases
-```
-
-## Keeping Branches in Sync
-
-Platform branches should regularly merge from `main` to stay current:
-
-```bash
-# On windows branch
-git checkout windows
-git merge main
-git push origin windows
-
-# On macos branch
-git checkout macos
-git merge main
-git push origin macos
-
-# On web branch
-git checkout web
-git merge main
-git push origin web
-```
-
-**When to sync:**
-- Before starting new work
-- After any main branch release
-- Daily during active development
+**Smart:** Only the affected platform builds!
 
 ## Release Process
 
-Releases are always cut from `main`:
+Releases are cut from `main`:
 
 ```bash
-# Ensure main has latest from all platforms
-git checkout main
-git merge windows  # If windows has unreleased changes
-git merge macos    # If macos has unreleased changes
-git merge web      # If web has unreleased changes
-
 # Tag the release
-git tag v1.0.1
-git push origin v1.0.1
+git tag v1.0.2
+git push origin v1.0.2
 
-# GitHub Actions builds Windows + macOS binaries
-# Creates GitHub Release with downloads
+# GitHub Actions automatically:
+# - Builds Windows .exe
+# - Builds macOS .dmg (arm64 + x64)
+# - Creates GitHub Release
+# - Uploads binaries
 ```
-
-## Branch Protection Rules
-
-### `main` branch
-- ✅ Require pull request before merging
-- ✅ Require status checks to pass (CI tests)
-- ✅ Require branches to be up to date before merging
-- ❌ Allow force push: **NEVER**
-- ❌ Allow deletions: **NEVER**
-
-### Platform branches (`windows`, `macos`, `web`)
-- ✅ Allow direct commits (for rapid development)
-- ✅ Require PR to merge to main
-- ❌ Allow force push: Use with caution
-- ❌ Allow deletions: **NEVER**
 
 ## Examples
 
 ### Example 1: Add Windows-only feature
 
 ```bash
-git checkout windows
-git pull origin windows
-git merge main                    # Get latest shared code
+git checkout main
+git pull origin main
 
-# Add feature
-# ... edit src/Windows/ClaudePermissionAssistant.App/DashboardWindow.xaml.cs ...
+# Edit Windows code
+code src/Windows/ClaudePermissionAssistant.App/DashboardWindow.xaml.cs
 
 git add .
-git commit -m "Add Windows notification sounds"
-git push origin windows
+git commit -m "Add notification sound setting to Windows app"
+git push origin main
 
-# Open PR on GitHub: windows → main
+# GitHub Actions builds only Windows
 ```
 
-### Example 2: Fix bug affecting all platforms
+### Example 2: Add macOS-only feature
 
 ```bash
 git checkout main
 git pull origin main
 
-# Fix bug
-# ... edit src/Shared/ClaudePermissionAssistant.Core/Services/ClaudePromptParserSimple.cs ...
+# Edit macOS code
+code src/macOS/ClaudePermissionAssistant.MacOS/Services/MacOSPromptExecutor.cs
+
+git add .
+git commit -m "Add iTerm2 support for macOS"
+git push origin main
+
+# GitHub Actions builds only macOS
+```
+
+### Example 3: Fix bug in shared code
+
+```bash
+git checkout main
+git pull origin main
+
+# Edit shared code
+code src/Shared/ClaudePermissionAssistant.Core/Services/ClaudePromptParserSimple.cs
 
 git add .
 git commit -m "Fix regex pattern for multiline prompts"
 git push origin main
 
-# No PR needed - direct commit to main
-# All platform branches should merge main to get the fix
+# GitHub Actions builds BOTH platforms (shared code affects both)
 ```
 
-### Example 3: Build website for downloads
+### Example 4: Security fix affecting all platforms
 
 ```bash
-git checkout web
-git pull origin web
-git merge main                    # Get latest docs/README
+git checkout main
+git pull origin main
 
-# Create website
-mkdir website
-cd website
-# ... create index.html, download.html, etc ...
+# Edit shared auto-update service
+code src/Shared/ClaudePermissionAssistant.Core/Services/AutoUpdateService.cs
+
+# Edit Windows executor
+code src/Windows/ClaudePermissionAssistant.Automation/Services/ClaudePermissionPromptExecutorHardened.cs
+
+# Edit macOS executor
+code src/macOS/ClaudePermissionAssistant.MacOS/Services/MacOSPromptExecutor.cs
 
 git add .
-git commit -m "Add project website with download page"
-git push origin web
+git commit -m "Fix critical security vulnerabilities (CRIT-001 through MED-004)"
+git push origin main
 
-# Open PR on GitHub: web → main
-# After merge, deploy website to GitHub Pages
+# GitHub Actions builds BOTH platforms
 ```
+
+## Branch Protection
+
+### `main` branch protection
+- ✅ Status checks must pass (CI builds)
+- ❌ Force push: **NEVER**
+- ❌ Allow deletions: **NEVER**
+
+Optional (for teams):
+- ✅ Require pull request before merging
+- ✅ Require code review
 
 ## FAQ
 
-**Q: Which branch should I use for a new feature?**  
-A: If it touches only Windows code → `windows`, only macOS → `macos`, only website → `web`, multiple platforms → `main`
+**Q: What happened to the `windows` and `macos` branches?**  
+A: They were archived. The folder structure provides the same organization without the complexity.
 
-**Q: Can I merge between platform branches?**  
-A: No. Always merge platform branches → `main`, then `main` → other platforms
+**Q: How do I work on just Windows code?**  
+A: Edit files in `src/Windows/` folder. CI will only build Windows.
 
-**Q: What if I accidentally commit to the wrong branch?**  
-A: Use `git cherry-pick` to move the commit to the correct branch
+**Q: What if I change shared code?**  
+A: CI builds both platforms automatically.
 
-**Q: How do I see what's different between branches?**  
+**Q: Can I create feature branches?**  
+A: Yes! Create branches from `main`, work on them, then PR back to `main`.
+
+**Q: What about the website?**  
+A: The website lives in a separate repository: [cpa-web](https://github.com/Arun270647/cpa-web)
+
+## Migration Notes
+
+**If you cloned before 2026-08-25:**
+
+Old way (separate branches):
 ```bash
-git diff main..windows           # Changes in windows not in main
-git log main..windows --oneline  # Commits in windows not in main
+git checkout windows  # Work here for Windows
+git checkout macos    # Work here for macOS
+git merge main        # Sync shared code
 ```
 
-**Q: Should I delete branches after merging?**  
-A: **NO.** These are long-lived platform branches, not feature branches. Keep them forever.
-
-## Visual Example
-
+New way (single branch):
+```bash
+git checkout main     # Everything happens here
+# Edit src/Windows/ or src/macOS/ as needed
 ```
-Time →
-
-main:     v1.0.0 ─────────── v1.0.1 ─────────── v1.1.0
-                    ↑            ↑            ↑
-windows:  feat A ───┘  feat B ──┘  feat C ───┘
-                       ↑
-macos:    feat X ──────┴──────────────────────
-                                   ↑
-web:      website ─────────────────┘
-```
-
-Each platform branch merges to main when ready, and main creates releases.
 
 ---
 
-**Remember:** Merges always flow **platform → main**, never the reverse (except for syncing).
+**Remember:** Keep it simple. One branch, organized folders, automatic builds.

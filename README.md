@@ -327,32 +327,36 @@ A: "Claude Prompter" is shorter, more memorable, and better reflects what the ap
 - Manually download from [releases page](https://github.com/Arun270647/claude-permissions-app/releases)
 - See [AUTO_UPDATE_ENABLED.md](docs/AUTO_UPDATE_ENABLED.md) for troubleshooting
 
-## Repository Branches
+## Repository Structure
 
-This repository uses platform-specific branches:
+This repository uses a single `main` branch with platform-specific folders:
 
-- **[main](https://github.com/Arun270647/claude-permissions-app)** - Production code (all platforms)
-- **[windows](https://github.com/Arun270647/claude-permissions-app/tree/windows)** - Windows development (WPF, UI Automation)
-- **[macos](https://github.com/Arun270647/claude-permissions-app/tree/macos)** - macOS development (Avalonia, AppleScript)
+```
+src/
+├── Shared/           # Cross-platform core library
+├── Windows/          # Windows-specific code (WPF, UI Automation)
+└── macOS/            # macOS-specific code (Avalonia, AppleScript)
+```
 
 **Website:** Separate repository at **[cpa-web](https://github.com/Arun270647/cpa-web)**
 
-See [BRANCHING_STRATEGY.md](docs/BRANCHING_STRATEGY.md) for workflow details.
+GitHub Actions automatically builds both platforms when relevant code changes.
 
 ## Contributing
 
 Contributions welcome! Please:
 
 1. Fork the repository
-2. Choose the right branch:
-   - Windows-specific → `windows` branch
-   - macOS-specific → `macos` branch
+2. Create a feature branch from `main`
+3. Make your changes:
+   - Windows-specific → `src/Windows/`
+   - macOS-specific → `src/macOS/`
+   - Shared code → `src/Shared/`
    - Website → **[cpa-web repository](https://github.com/Arun270647/cpa-web)**
-   - Cross-platform → `main` branch
-3. Run tests (`dotnet test`)
-4. Commit changes
-5. Push to your branch
-6. Open a Pull Request to `main`
+4. Run tests (`dotnet test`)
+5. Commit your changes
+6. Push to your fork
+7. Open a Pull Request to `main`
 
 See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed guidelines.
 

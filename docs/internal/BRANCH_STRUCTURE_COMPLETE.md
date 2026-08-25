@@ -92,17 +92,14 @@ Repository: claude-permissions-app
 
 ### When Users Visit GitHub
 
-**Default (main branch):**
-They see the complete project with installation instructions for both platforms.
+**Main branch (only branch):**
+They see the complete project with:
+- `src/Windows/` - Windows-specific code
+- `src/macOS/` - macOS-specific code  
+- `src/Shared/` - Cross-platform core
+- Installation instructions for both platforms in README
 
-**Windows branch:**
-They see only Windows development files and Windows-focused README.
-
-**macOS branch:**
-They see only macOS development files and macOS-focused README.
-
-**Web branch:**
-They see the website source code.
+**Note:** Platform-specific branches have been consolidated into main for simplicity.
 
 ---
 
