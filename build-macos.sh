@@ -122,8 +122,7 @@ dotnet publish src/macOS/ClaudePermissionAssistant.MacApp/ClaudePermissionAssist
     -o ${BUILD_DIR}/osx-arm64
 
 create_app_bundle "arm64" "${BUILD_DIR}/osx-arm64/${APP_NAME}"
-create_zip "arm64"
-# create_dmg "arm64"  # Uncomment if you want DMG files (requires macOS)
+create_dmg "arm64"
 
 # Clean up before next build
 rm -rf "${BUILD_DIR}/${APP_NAME}.app"
@@ -140,8 +139,7 @@ dotnet publish src/macOS/ClaudePermissionAssistant.MacApp/ClaudePermissionAssist
     -o ${BUILD_DIR}/osx-x64
 
 create_app_bundle "x64" "${BUILD_DIR}/osx-x64/${APP_NAME}"
-create_zip "x64"
-# create_dmg "x64"  # Uncomment if you want DMG files (requires macOS)
+create_dmg "x64"
 
 echo ""
 echo "🎉 Build complete!"

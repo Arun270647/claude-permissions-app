@@ -126,17 +126,31 @@ jobs:
         </plist>
         EOF
 
-    - name: Create ZIP package
+    - name: Create DMG package
       run: |
-        cd publish
-        zip -r "ClaudePrompter-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}.zip" ClaudePrompter.app
-        cd ..
+        APP_NAME="ClaudePrompter"
+        DMG_NAME="ClaudePrompter-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}.dmg"
+        TEMP_DMG="publish/temp.dmg"
+
+        # Create temporary DMG
+        hdiutil create -volname "${APP_NAME}" \
+                       -srcfolder "publish/${APP_NAME}.app" \
+                       -ov -format UDRW \
+                       "${TEMP_DMG}"
+
+        # Convert to compressed DMG
+        hdiutil convert "${TEMP_DMG}" \
+                        -format UDZO \
+                        -o "publish/${DMG_NAME}"
+
+        # Clean up temp DMG
+        rm "${TEMP_DMG}"
 
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:
         name: macos-release-${{ matrix.arch }}
-        path: publish/ClaudePrompter-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}.zip
+        path: publish/ClaudePrompter-macOS-${{ matrix.arch }}-v${{ steps.version.outputs.VERSION }}.dmg
         retention-days: 90
 
   create-release:
@@ -167,8 +181,8 @@ jobs:
         - `ClaudePrompter-Windows-v${{ steps.version.outputs.VERSION }}.exe` - Just download and run!
 
         **macOS:**
-        - `ClaudePrompter-macOS-arm64-v${{ steps.version.outputs.VERSION }}.zip` - Apple Silicon (M1/M2/M3)
-        - `ClaudePrompter-macOS-x64-v${{ steps.version.outputs.VERSION }}.zip` - Intel Macs
+        - `ClaudePrompter-macOS-arm64-v${{ steps.version.outputs.VERSION }}.dmg` - Apple Silicon (M1/M2/M3)
+        - `ClaudePrompter-macOS-x64-v${{ steps.version.outputs.VERSION }}.dmg` - Intel Macs
 
         ### 🚀 Installation
 
@@ -230,7 +244,7 @@ jobs:
         cat > latest-macos-arm64.json << EOF
         {
           "version": "${{ steps.version.outputs.VERSION }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePrompter-macOS-arm64-v${{ steps.version.outputs.VERSION }}.zip",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePrompter-macOS-arm64-v${{ steps.version.outputs.VERSION }}.dmg",
           "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
           "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         }
@@ -241,7 +255,7 @@ jobs:
         cat > latest-macos-x64.json << EOF
         {
           "version": "${{ steps.version.outputs.VERSION }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePrompter-macOS-x64-v${{ steps.version.outputs.VERSION }}.zip",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePrompter-macOS-x64-v${{ steps.version.outputs.VERSION }}.dmg",
           "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
           "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         }
