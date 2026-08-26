@@ -1,8 +1,9 @@
 {
   "version": "1.0.0",
   "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.0/ClaudePrompter-Windows-v1.0.0.exe",
+  "checksum": "1510ebec1bf44aae9ef9eacfd062bb16c104526b71d8e41b66fb903a0d395956",
   "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.0",
-  "patchNotes": "Claude Prompter v1.0.0\n\nSee full release notes at:\nhttps://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.0",
-  "publishedAt": "2026-08-26T16:13:04Z",
-  "mandatory": true
+  "patchNotes": "\n",
+  "publishedAt": "2026-08-26T16:47:15Z",
+  "mandatory": false
 }
