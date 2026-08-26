@@ -1,5 +1,6 @@
 namespace ClaudePermissionAssistant.Core.Models;
 
+// Version: 1.0.0
 public class ExecutorConfiguration
 {
     public int FocusDelayMs { get; set; } = 100;
