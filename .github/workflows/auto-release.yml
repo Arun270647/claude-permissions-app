@@ -28,12 +28,12 @@ jobs:
     - name: Extract version and patch notes from CHANGELOG
       id: extract
       run: |
-        # Extract the first unreleased version from CHANGELOG.md
-        VERSION=$(grep -m 1 '## \[' CHANGELOG.md | sed 's/## \[\(.*\)\].*/\1/')
+        # Extract the first version from CHANGELOG.md (skip [Unreleased])
+        VERSION=$(grep '## \[' CHANGELOG.md | grep -v 'Unreleased' | head -n 1 | sed 's/## \[\(.*\)\].*/\1/')
 
-        if [ -z "$VERSION" ] || [ "$VERSION" = "Unreleased" ]; then
+        if [ -z "$VERSION" ]; then
           echo "has_version=false" >> $GITHUB_OUTPUT
-          echo "No version found in CHANGELOG.md"
+          echo "No version found in CHANGELOG.md (only [Unreleased] found)"
           exit 0
         fi
 
