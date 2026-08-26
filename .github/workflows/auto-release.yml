@@ -265,12 +265,19 @@ jobs:
         **Full documentation:** https://github.com/Arun270647/claude-permissions-app#readme
         FOOTER
 
-    - name: Create git tag
+    - name: Create git tag (if not exists)
       run: |
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
-        git tag -a "v${{ needs.detect-version.outputs.version }}" -m "Release v${{ needs.detect-version.outputs.version }}"
-        git push origin "v${{ needs.detect-version.outputs.version }}"
+
+        # Check if tag already exists (from previous failed run)
+        if git rev-parse "v${{ needs.detect-version.outputs.version }}" >/dev/null 2>&1; then
+          echo "Tag v${{ needs.detect-version.outputs.version }} already exists, skipping tag creation"
+        else
+          echo "Creating new tag v${{ needs.detect-version.outputs.version }}"
+          git tag -a "v${{ needs.detect-version.outputs.version }}" -m "Release v${{ needs.detect-version.outputs.version }}"
+          git push origin "v${{ needs.detect-version.outputs.version }}"
+        fi
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
