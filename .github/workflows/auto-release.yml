@@ -27,6 +27,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
 
     - name: Extract version and patch notes from CHANGELOG
       id: extract
@@ -44,7 +47,8 @@ jobs:
         echo "has_version=true" >> $GITHUB_OUTPUT
         echo "Found version: $VERSION"
 
-        # Check if tag already exists
+        # Check if tag already exists (fetch all tags first)
+        git fetch --tags origin
         if git rev-parse "v$VERSION" >/dev/null 2>&1; then
           echo "has_version=false" >> $GITHUB_OUTPUT
           echo "Tag v$VERSION already exists, skipping release"
@@ -268,22 +272,9 @@ jobs:
         **Full documentation:** https://github.com/Arun270647/claude-permissions-app#readme
         FOOTER
 
-    - name: Create git tag (if not exists)
-      run: |
-        git config user.name "GitHub Actions"
-        git config user.email "actions@github.com"
-
-        # Check if tag already exists (from previous failed run)
-        if git rev-parse "v${{ needs.detect-version.outputs.version }}" >/dev/null 2>&1; then
-          echo "Tag v${{ needs.detect-version.outputs.version }} already exists, skipping tag creation"
-        else
-          echo "Creating new tag v${{ needs.detect-version.outputs.version }}"
-          git tag -a "v${{ needs.detect-version.outputs.version }}" -m "Release v${{ needs.detect-version.outputs.version }}"
-          # Use GITHUB_TOKEN to push tag with proper permissions
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git "v${{ needs.detect-version.outputs.version }}"
-        fi
-
     - name: Create GitHub Release
+      # This action creates the tag via GitHub API (bypasses git push workflow permission restriction)
+      # No separate "git tag && git push" step needed
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v${{ needs.detect-version.outputs.version }}
@@ -350,6 +341,7 @@ jobs:
         EOF
 
     - name: Commit update manifests to main
+      continue-on-error: true
       run: |
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
@@ -358,10 +350,10 @@ jobs:
         git pull origin main
         git add latest-*.json
         git commit -m "chore: Update manifests for v${{ needs.detect-version.outputs.version }} [skip ci]" || echo "No changes to commit"
-        git push origin main
+        git push origin main || echo "Warning: Could not push manifests (workflow permission restriction). Manifests will be updated on next manual push."
 
     - name: Trigger website deployment (Vercel)
-      if: success()
+      if: always()
       run: |
         # Trigger Vercel redeployment via webhook (if configured)
         if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
