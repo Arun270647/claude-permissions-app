@@ -1,5 +1,6 @@
 namespace ClaudePermissionAssistant.Core.Models;
 
+// v1.0.0 - First Production Release
 public class ClaudeSession
 {
     public required IntPtr TerminalWindowHandle { get; init; }
