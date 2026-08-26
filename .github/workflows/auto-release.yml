@@ -13,6 +13,8 @@ on:
 
 permissions:
   contents: write
+  actions: read
+  id-token: write
 
 jobs:
   detect-version:
@@ -277,7 +279,8 @@ jobs:
         else
           echo "Creating new tag v${{ needs.detect-version.outputs.version }}"
           git tag -a "v${{ needs.detect-version.outputs.version }}" -m "Release v${{ needs.detect-version.outputs.version }}"
-          git push origin "v${{ needs.detect-version.outputs.version }}"
+          # Use GITHUB_TOKEN to push tag with proper permissions
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git "v${{ needs.detect-version.outputs.version }}"
         fi
 
     - name: Create GitHub Release
