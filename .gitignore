@@ -97,5 +97,6 @@ Desktop.ini
 # Publish output
 publish/
 
-# Auto-generated manifest files
-latest-*.json
+# Note: latest-*.json manifest files are NOT ignored
+# They must be tracked in git for the auto-update system to work
+# Apps download them from GitHub raw URLs to check for updates
