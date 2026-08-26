@@ -15,6 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - macOS notarization (remove security warnings)
 - Windows code signing (remove SmartScreen warnings)
 
+## [1.0.3] - 2026-08-26
+
+### Changed
+- **UI improvement** - Moved version number from title bar to bottom left corner
+  - Removed version from window title ("Claude Prompter v1.0.1" → "Claude Prompter")
+  - Removed version from main heading ("CLAUDE PROMPTER v1.0.1" → "CLAUDE PROMPTER")
+  - Added version display in bottom left corner (small, gray text)
+  - Provides cleaner, less cluttered interface
+
+### Infrastructure
+- **Workflow reliability** - Made auto-release workflow idempotent
+  - Workflow now checks if git tag already exists before creating it
+  - Prevents "tag already exists" errors when retrying failed releases
+  - Allows safe re-runs after partial failures without manual intervention
+
 ## [1.0.2] - 2026-08-26
 
 ### Fixed
