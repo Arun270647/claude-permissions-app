@@ -1,9 +1,9 @@
 {
-  "version": "1.0.3",
-  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.3/ClaudePrompter-macOS-arm64-v1.0.3.dmg",
-  "checksum": "adedccf6ba93773cfcc66bfe1b524a48672771b04ec6020800f0f40bf66dd6c8",
-  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.3",
+  "version": "1.0.4",
+  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.4/ClaudePrompter-macOS-arm64-v1.0.4.dmg",
+  "checksum": "2821debdc20f9b79481cd7da3d96f9e377f0711cdb2c6fa68d4f957540628fb5",
+  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.4",
   "patchNotes": "\n",
-  "publishedAt": "2026-08-26T13:58:51Z",
+  "publishedAt": "2026-08-26T14:13:39Z",
   "mandatory": false
 }
