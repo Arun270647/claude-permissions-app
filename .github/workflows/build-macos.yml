@@ -3,12 +3,18 @@ name: Build macOS
 on:
   push:
     branches:
-      - macos
+      - dev
       - main
     paths:
       - 'src/macOS/**'
       - 'src/Shared/**'
       - '.github/workflows/build-macos.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/macOS/**'
+      - 'src/Shared/**'
 
 jobs:
   build:

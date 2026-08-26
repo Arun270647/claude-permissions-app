@@ -15,7 +15,7 @@ namespace ClaudePermissionAssistant.App.Services;
 /// </summary>
 public class BackgroundMonitorService : IDisposable
 {
-    private readonly IClaudePromptDetector _detector;
+    private readonly ClaudePromptDetector _detector;
     private readonly ClaudePermissionPromptExecutorHardened _executor;
     private readonly FileLoggingService _logger;
     private readonly ApprovalStatistics _statistics;
@@ -27,6 +27,12 @@ public class BackgroundMonitorService : IDisposable
     private bool _isProcessing;
     private int _cycleCount = 0;
     private DateTime _lastDiagnosticLog = DateTime.MinValue;
+    private DateTime _lastCacheCleanup = DateTime.MinValue;
+    private int _consecutiveTextExtractionFailures = 0;
+    private DateTime _lastHandledPromptsCleanup = DateTime.MinValue;
+    private const int MaxConsecutiveFailuresBeforeRecovery = 10;
+    private const int CacheCleanupIntervalMinutes = 5;
+    private const int HandledPromptsCleanupIntervalMinutes = 10;
 
     public event EventHandler<StatisticsUpdatedEventArgs>? StatisticsUpdated;
     public event EventHandler<string>? StatusChanged;
@@ -114,6 +120,9 @@ public class BackgroundMonitorService : IDisposable
             _executor.ClearHandledPrompts(); // Allow re-handling of prompts for new session
             _cycleCount = 0;
             _lastDiagnosticLog = DateTime.MinValue;
+            _lastCacheCleanup = DateTime.UtcNow; // Initialize cache cleanup timer
+            _lastHandledPromptsCleanup = DateTime.UtcNow; // Initialize handled prompts cleanup timer
+            _consecutiveTextExtractionFailures = 0;
 
             _logger.LogInfo($"═══════════════════════════════════════");
             _logger.LogInfo($"MONITOR_STARTED");
@@ -202,6 +211,32 @@ public class BackgroundMonitorService : IDisposable
             // PHASE 5 DIAGNOSTIC: Log heartbeat once per second (not every 500ms)
             var shouldLogDiagnostics = (DateTime.UtcNow - _lastDiagnosticLog).TotalSeconds >= 1.0;
 
+            // Periodic cache cleanup to prevent memory bloat (every 5 minutes)
+            var shouldCleanupCache = (DateTime.UtcNow - _lastCacheCleanup).TotalMinutes >= CacheCleanupIntervalMinutes;
+            if (shouldCleanupCache)
+            {
+                _detector.CleanupStaleCache();
+                _lastCacheCleanup = DateTime.UtcNow;
+
+                if (shouldLogDiagnostics)
+                {
+                    _logger.LogInfo("MONITOR_CACHE_CLEANUP: Periodic cleanup completed");
+                }
+            }
+
+            // Periodic cleanup of old handled prompts (every 10 minutes) for 24/7 stability
+            var shouldCleanupHandledPrompts = (DateTime.UtcNow - _lastHandledPromptsCleanup).TotalMinutes >= HandledPromptsCleanupIntervalMinutes;
+            if (shouldCleanupHandledPrompts)
+            {
+                _executor.CleanupOldHandledPrompts();
+                _lastHandledPromptsCleanup = DateTime.UtcNow;
+
+                if (shouldLogDiagnostics)
+                {
+                    _logger.LogInfo("MONITOR_HANDLED_PROMPTS_CLEANUP: Periodic cleanup completed (24/7 stability)");
+                }
+            }
+
             // Check if terminal still exists
             if (!IsTerminalAlive(session.Terminal))
             {
@@ -222,9 +257,37 @@ public class BackgroundMonitorService : IDisposable
             var terminalText = _detector.GetTerminalText(claudeSession.TerminalWindowHandle);
             var textLength = terminalText?.Length ?? 0;
 
-            if (shouldLogDiagnostics)
+            // Track text extraction failures
+            if (textLength == 0)
             {
-                _logger.LogInfo($"MONITOR_TEXT_EXTRACTION: Length={textLength}, HasText={textLength > 0}");
+                _consecutiveTextExtractionFailures++;
+
+                if (shouldLogDiagnostics)
+                {
+                    _logger.LogInfo($"MONITOR_TEXT_EXTRACTION: FAILED - Length=0, ConsecutiveFailures={_consecutiveTextExtractionFailures}");
+                }
+
+                // Trigger recovery if failures exceed threshold
+                if (_consecutiveTextExtractionFailures >= MaxConsecutiveFailuresBeforeRecovery)
+                {
+                    _logger.LogInfo($"MONITOR_RECOVERY: Triggering recovery after {_consecutiveTextExtractionFailures} consecutive text extraction failures");
+                    TriggerRecovery(claudeSession.TerminalWindowHandle);
+                    _consecutiveTextExtractionFailures = 0; // Reset counter after recovery attempt
+                }
+            }
+            else
+            {
+                // Text extraction succeeded - reset counter
+                if (_consecutiveTextExtractionFailures > 0)
+                {
+                    _logger.LogInfo($"MONITOR_TEXT_EXTRACTION: RECOVERED - Previous failures: {_consecutiveTextExtractionFailures}");
+                    _consecutiveTextExtractionFailures = 0;
+                }
+
+                if (shouldLogDiagnostics)
+                {
+                    _logger.LogInfo($"MONITOR_TEXT_EXTRACTION: Length={textLength}, HasText=true");
+                }
             }
 
             // Use proven detector to find Claude permission prompts
@@ -271,7 +334,18 @@ public class BackgroundMonitorService : IDisposable
                 return;
             }
 
-            // Prompt detected with persistent approval option
+            // Check if already handled (duplicate protection) - do this BEFORE incrementing statistics
+            if (_executor.IsPromptAlreadyHandled(detectedPrompt))
+            {
+                // Already handled - skip (don't count as a new detection)
+                if (shouldLogDiagnostics)
+                {
+                    _logger.LogInfo($"MONITOR_REJECTION: Prompt already handled (duplicate protection)");
+                }
+                return;
+            }
+
+            // Prompt detected with persistent approval option (and not a duplicate)
             _statistics.PromptsDetected++;
             session.LastActivity = DateTime.UtcNow;
 
@@ -284,17 +358,6 @@ public class BackgroundMonitorService : IDisposable
             });
 
             NotifyStatisticsUpdated();
-
-            // Check if already handled (duplicate protection)
-            if (_executor.IsPromptAlreadyHandled(detectedPrompt))
-            {
-                // Already handled - skip
-                if (shouldLogDiagnostics)
-                {
-                    _logger.LogInfo($"MONITOR_REJECTION: Prompt already handled (duplicate protection)");
-                }
-                return;
-            }
 
             // Prompt is ready for execution
             _logger.LogInfo($"MONITOR_EXECUTION_START: PromptType={detectedPrompt.Request.PromptType}, Option={detectedPrompt.Request.PersistentApprovalOptionNumber}");
@@ -415,6 +478,35 @@ public class BackgroundMonitorService : IDisposable
         _logger.LogInfo($"MONITOR_SESSION_VERIFY: Created session with IsVerified={session.IsVerified}, ClaudeProcessId={session.ClaudeProcessId}");
 
         return session;
+    }
+
+    private void TriggerRecovery(IntPtr windowHandle)
+    {
+        _logger.LogInfo("═══════════════════════════════════════");
+        _logger.LogInfo("MONITOR_RECOVERY_START");
+        _logger.LogInfo($"  Reason: {_consecutiveTextExtractionFailures} consecutive text extraction failures");
+        _logger.LogInfo($"  Action: Clearing UI Automation cache");
+
+        try
+        {
+            // Clear the detector's automation element cache to force fresh element acquisition
+            _detector.ClearCache(windowHandle);
+            _logger.LogInfo("  Cache cleared successfully");
+
+            // Also clear handled prompts to allow re-detection
+            _executor.ClearHandledPrompts();
+            _logger.LogInfo("  Handled prompts cleared");
+
+            _logger.LogInfo("MONITOR_RECOVERY_COMPLETE");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("MONITOR_RECOVERY_FAILED", ex);
+        }
+        finally
+        {
+            _logger.LogInfo("═══════════════════════════════════════");
+        }
     }
 
     private void NotifyStatisticsUpdated()

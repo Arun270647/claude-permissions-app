@@ -1,0 +1,360 @@
+name: Auto Release on Main Push
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - '**.md'
+      - 'latest-*.json'  # Ignore manifest updates from release workflow
+
+permissions:
+  contents: write
+
+jobs:
+  detect-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+      has_version: ${{ steps.extract.outputs.has_version }}
+      patch_notes: ${{ steps.extract.outputs.patch_notes }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Extract version and patch notes from CHANGELOG
+      id: extract
+      run: |
+        # Extract the first unreleased version from CHANGELOG.md
+        VERSION=$(grep -m 1 '## \[' CHANGELOG.md | sed 's/## \[\(.*\)\].*/\1/')
+
+        if [ -z "$VERSION" ] || [ "$VERSION" = "Unreleased" ]; then
+          echo "has_version=false" >> $GITHUB_OUTPUT
+          echo "No version found in CHANGELOG.md"
+          exit 0
+        fi
+
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "has_version=true" >> $GITHUB_OUTPUT
+        echo "Found version: $VERSION"
+
+        # Check if tag already exists
+        if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+          echo "has_version=false" >> $GITHUB_OUTPUT
+          echo "Tag v$VERSION already exists, skipping release"
+          exit 0
+        fi
+
+        # Extract patch notes for this version
+        # Get text between ## [VERSION] and next ## [
+        PATCH_NOTES=$(awk "/^## \[$VERSION\]/,/^## \[/" CHANGELOG.md | sed '1d;$d' | head -c 4000)
+
+        # Save to file for multi-line output
+        echo "$PATCH_NOTES" > patch_notes.txt
+
+        # Set output
+        echo "patch_notes<<EOF" >> $GITHUB_OUTPUT
+        cat patch_notes.txt >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+  build-windows:
+    needs: detect-version
+    if: needs.detect-version.outputs.has_version == 'true'
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore Windows dependencies
+      run: |
+        dotnet restore src/Windows/ClaudePermissionAssistant.Automation/ClaudePermissionAssistant.Automation.csproj -r win-x64
+        dotnet restore src/Windows/ClaudePermissionAssistant.App/ClaudePermissionAssistant.App.csproj -r win-x64
+
+    - name: Run tests
+      run: dotnet test --configuration Release --verbosity minimal
+
+    - name: Publish Windows app
+      run: |
+        dotnet publish src/Windows/ClaudePermissionAssistant.App/ClaudePermissionAssistant.App.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained true `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:EnableCompressionInSingleFile=true `
+          -p:Version=${{ needs.detect-version.outputs.version }} `
+          -o publish/win-x64
+
+    - name: Rename Windows executable
+      shell: bash
+      run: mv publish/win-x64/ClaudePrompter.exe publish/win-x64/ClaudePrompter-Windows-v${{ needs.detect-version.outputs.version }}.exe
+
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-release
+        path: publish/win-x64/ClaudePrompter-Windows-v${{ needs.detect-version.outputs.version }}.exe
+        retention-days: 90
+
+  build-macos:
+    needs: detect-version
+    if: needs.detect-version.outputs.has_version == 'true'
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        arch: [arm64, x64]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore macOS dependencies
+      run: |
+        dotnet restore src/macOS/ClaudePermissionAssistant.MacOS/ClaudePermissionAssistant.MacOS.csproj -r osx-${{ matrix.arch }}
+        dotnet restore src/macOS/ClaudePermissionAssistant.MacApp/ClaudePermissionAssistant.MacApp.csproj -r osx-${{ matrix.arch }}
+
+    - name: Publish macOS app
+      run: |
+        dotnet publish src/macOS/ClaudePermissionAssistant.MacApp/ClaudePermissionAssistant.MacApp.csproj \
+          -c Release \
+          -r osx-${{ matrix.arch }} \
+          --self-contained true \
+          -p:PublishSingleFile=true \
+          -p:Version=${{ needs.detect-version.outputs.version }} \
+          -o publish/osx-${{ matrix.arch }}
+
+    - name: Create .app bundle
+      run: |
+        APP_NAME="ClaudePrompter"
+        APP_BUNDLE="publish/${APP_NAME}.app"
+
+        # Create bundle structure
+        mkdir -p "${APP_BUNDLE}/Contents/MacOS"
+        mkdir -p "${APP_BUNDLE}/Contents/Resources"
+
+        # Copy executable
+        cp "publish/osx-${{ matrix.arch }}/${APP_NAME}" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
+        chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
+
+        # Create Info.plist
+        cat > "${APP_BUNDLE}/Contents/Info.plist" << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>ClaudePrompter</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.claudeprompter.app</string>
+            <key>CFBundleName</key>
+            <string>Claude Prompter</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>${{ needs.detect-version.outputs.version }}</string>
+            <key>CFBundleVersion</key>
+            <string>${{ needs.detect-version.outputs.version }}</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.15</string>
+        </dict>
+        </plist>
+        EOF
+
+    - name: Create DMG package
+      run: |
+        APP_NAME="ClaudePrompter"
+        DMG_NAME="ClaudePrompter-macOS-${{ matrix.arch }}-v${{ needs.detect-version.outputs.version }}.dmg"
+        TEMP_DMG="publish/temp.dmg"
+
+        # Create temporary DMG
+        hdiutil create -volname "${APP_NAME}" \
+                       -srcfolder "publish/${APP_NAME}.app" \
+                       -ov -format UDRW \
+                       "${TEMP_DMG}"
+
+        # Convert to compressed DMG
+        hdiutil convert "${TEMP_DMG}" \
+                        -format UDZO \
+                        -o "publish/${DMG_NAME}"
+
+        # Clean up temp DMG
+        rm "${TEMP_DMG}"
+
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-release-${{ matrix.arch }}
+        path: publish/ClaudePrompter-macOS-${{ matrix.arch }}-v${{ needs.detect-version.outputs.version }}.dmg
+        retention-days: 90
+
+  create-release:
+    needs: [detect-version, build-windows, build-macos]
+    if: needs.detect-version.outputs.has_version == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: release-assets
+
+    - name: Create release notes from CHANGELOG
+      run: |
+        cat > release-notes.md << 'HEADER'
+        ## 🎉 Release v${{ needs.detect-version.outputs.version }}
+
+        ### 📦 Downloads
+
+        **Windows (10/11):**
+        - `ClaudePrompter-Windows-v${{ needs.detect-version.outputs.version }}.exe` - Just download and run!
+
+        **macOS:**
+        - `ClaudePrompter-macOS-arm64-v${{ needs.detect-version.outputs.version }}.dmg` - Apple Silicon (M1/M2/M3/M4)
+        - `ClaudePrompter-macOS-x64-v${{ needs.detect-version.outputs.version }}.dmg` - Intel Macs
+
+        ### 🚀 Installation
+
+        **Windows:**
+        1. Download the `.exe` file
+        2. Double-click to run
+        3. Click "More info" → "Run anyway" if SmartScreen appears
+
+        **macOS:**
+        1. Download the `.dmg` file for your Mac
+        2. Open the DMG
+        3. Drag `ClaudePrompter.app` to Applications folder
+        4. Right-click the app → "Open" (first time only to bypass security)
+        5. Grant Accessibility permissions when prompted
+
+        ---
+
+        ## 📝 What's New
+
+        HEADER
+
+        # Append patch notes from CHANGELOG.md
+        echo "${{ needs.detect-version.outputs.patch_notes }}" >> release-notes.md
+
+        # Add footer
+        cat >> release-notes.md << 'FOOTER'
+
+        ---
+
+        ### 🔄 Auto-Update
+
+        If you already have a previous version installed, the app will automatically check for updates on launch.
+
+        **Full documentation:** https://github.com/Arun270647/claude-permissions-app#readme
+        FOOTER
+
+    - name: Create git tag
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git tag -a "v${{ needs.detect-version.outputs.version }}" -m "Release v${{ needs.detect-version.outputs.version }}"
+        git push origin "v${{ needs.detect-version.outputs.version }}"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ needs.detect-version.outputs.version }}
+        name: v${{ needs.detect-version.outputs.version }}
+        files: |
+          release-assets/windows-release/*
+          release-assets/macos-release-arm64/*
+          release-assets/macos-release-x64/*
+        body_path: release-notes.md
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Generate Windows update manifest with checksum
+      run: |
+        WINDOWS_FILE="release-assets/windows-release/ClaudePrompter-Windows-v${{ needs.detect-version.outputs.version }}.exe"
+        CHECKSUM=$(sha256sum "$WINDOWS_FILE" | awk '{print $1}')
+
+        cat > latest-windows.json << EOF
+        {
+          "version": "${{ needs.detect-version.outputs.version }}",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ needs.detect-version.outputs.version }}/ClaudePrompter-Windows-v${{ needs.detect-version.outputs.version }}.exe",
+          "checksum": "$CHECKSUM",
+          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ needs.detect-version.outputs.version }}",
+          "patchNotes": $(echo "${{ needs.detect-version.outputs.patch_notes }}" | head -c 500 | jq -Rs .),
+          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+          "mandatory": false
+        }
+        EOF
+
+    - name: Generate macOS arm64 update manifest with checksum
+      run: |
+        MACOS_FILE="release-assets/macos-release-arm64/ClaudePrompter-macOS-arm64-v${{ needs.detect-version.outputs.version }}.dmg"
+        CHECKSUM=$(sha256sum "$MACOS_FILE" | awk '{print $1}')
+
+        cat > latest-macos-arm64.json << EOF
+        {
+          "version": "${{ needs.detect-version.outputs.version }}",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ needs.detect-version.outputs.version }}/ClaudePrompter-macOS-arm64-v${{ needs.detect-version.outputs.version }}.dmg",
+          "checksum": "$CHECKSUM",
+          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ needs.detect-version.outputs.version }}",
+          "patchNotes": $(echo "${{ needs.detect-version.outputs.patch_notes }}" | head -c 500 | jq -Rs .),
+          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+          "mandatory": false
+        }
+        EOF
+
+    - name: Generate macOS x64 update manifest with checksum
+      run: |
+        MACOS_FILE="release-assets/macos-release-x64/ClaudePrompter-macOS-x64-v${{ needs.detect-version.outputs.version }}.dmg"
+        CHECKSUM=$(sha256sum "$MACOS_FILE" | awk '{print $1}')
+
+        cat > latest-macos-x64.json << EOF
+        {
+          "version": "${{ needs.detect-version.outputs.version }}",
+          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ needs.detect-version.outputs.version }}/ClaudePrompter-macOS-x64-v${{ needs.detect-version.outputs.version }}.dmg",
+          "checksum": "$CHECKSUM",
+          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ needs.detect-version.outputs.version }}",
+          "patchNotes": $(echo "${{ needs.detect-version.outputs.patch_notes }}" | head -c 500 | jq -Rs .),
+          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+          "mandatory": false
+        }
+        EOF
+
+    - name: Commit update manifests to main
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git fetch origin main
+        git checkout main
+        git pull origin main
+        git add latest-*.json
+        git commit -m "chore: Update manifests for v${{ needs.detect-version.outputs.version }} [skip ci]" || echo "No changes to commit"
+        git push origin main
+
+    - name: Trigger website deployment (Vercel)
+      if: success()
+      run: |
+        # Trigger Vercel redeployment via webhook (if configured)
+        if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
+          curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
+        else
+          echo "Vercel deploy hook not configured - website will update on next commit"
+        fi
