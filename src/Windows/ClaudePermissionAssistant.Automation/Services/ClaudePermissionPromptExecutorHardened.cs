@@ -97,9 +97,29 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
     {
         var startTime = DateTime.UtcNow;
 
+        // SECURITY: Validate window handle before attempting keyboard injection
+        var targetHwnd = redetected.Session.TerminalWindowHandle;
+        if (targetHwnd == IntPtr.Zero)
+        {
+            _logger.LogError("SECURITY: Invalid window handle (Zero) - ABORTING to prevent blind keystroke injection");
+            return CreateFailureResult(originalPrompt, startTime, optionNumber,
+                "Invalid window handle - cannot safely inject keystrokes",
+                ExecutionState.Failed);
+        }
+
+        // Verify the window still exists (only in production mode with RequireForegroundVerification)
+        // In test mode, we allow fake HWNDs since tests use mock window handles
+        if (_config.RequireForegroundVerification && !IsWindow(targetHwnd))
+        {
+            _logger.LogError("SECURITY: Window no longer exists (HWND 0x{Hwnd:X}) - ABORTING", targetHwnd.ToInt64());
+            return CreateFailureResult(originalPrompt, startTime, optionNumber,
+                $"Window 0x{targetHwnd.ToInt64():X} no longer exists",
+                ExecutionState.Failed);
+        }
+
         // Step 3.1: Bring terminal to foreground
         _logger.LogDebug("Bringing terminal to foreground");
-        var targetHwnd = redetected.Session.TerminalWindowHandle;
+
 
         if (!SetForegroundWindow(targetHwnd))
         {
@@ -356,6 +376,9 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
