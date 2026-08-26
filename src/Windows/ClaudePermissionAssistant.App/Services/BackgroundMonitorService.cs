@@ -59,7 +59,9 @@ public class BackgroundMonitorService : IDisposable
             VerificationDelayMs = 500,
             MaxRetryAttempts = 0,
             RetryDelayMs = 0,
-            RequireForegroundVerification = false
+            // CRITICAL SECURITY: MUST be true to prevent keystroke injection into wrong windows
+            // This ensures keystrokes are ONLY sent when the terminal window has focus
+            RequireForegroundVerification = true
         };
 
         _executor = new ClaudePermissionPromptExecutorHardened(_detector, executorLogger, executorConfig);

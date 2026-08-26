@@ -15,6 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - macOS notarization (remove security warnings)
 - Windows code signing (remove SmartScreen warnings)
 
+## [1.0.4] - TBD
+
+### Security
+- **CRITICAL: Fixed keystroke injection vulnerability** - Prevented keystrokes from leaking into arbitrary applications
+  - Root cause: Production code had `RequireForegroundVerification = false`
+  - Impact: Option numbers ("3", "2", "1") were being typed into user's active applications (CMD, browsers, editors) during test runs and execution
+  - Solution: Enabled foreground verification + added 3-layer security validation
+  - Now keystrokes are ONLY sent when terminal window is properly focused and verified
+  - Added HWND validation (reject zero/null handles)
+  - Added IsWindow() check (verify window exists before injection)
+  - Tests continue working with mock HWNDs (test mode exempted from some checks)
+
+### Documentation
+- **Updated CLAUDE.md workflow** - Clarified commit-push-release process
+  - Changes must be committed locally first
+  - Push to dev ONLY after user approval
+  - Versions created ONLY when dev merges to main
+  - Prevents accidental version increments for every small change
+
 ## [1.0.3] - 2026-08-26
 
 ### Changed
