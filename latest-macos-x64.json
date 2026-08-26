@@ -1,9 +1,9 @@
 {
-  "version": "1.0.2",
-  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.2/ClaudePrompter-macOS-x64-v1.0.2.dmg",
-  "checksum": "88227d0c6258b808925509c56a72245ba6da22ed2c15bbd58ac76435395fceee",
-  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.2",
-  "patchNotes": "## Fixed\n- **Accurate prompt counting** - Fixed misleading statistics\n- **24/7 stability improvements** - Enhanced memory management\n- **Test compatibility** - Respects config settings\n- **Parser PromptRegion** - Handles massive buffers correctly",
-  "publishedAt": "2026-08-26T13:33:55Z",
+  "version": "1.0.3",
+  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.3/ClaudePrompter-macOS-x64-v1.0.3.dmg",
+  "checksum": "3dee149090d9c1037e1b0a669edec756a7f2a02d6b42669851b2093f9904b6c7",
+  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.3",
+  "patchNotes": "\n",
+  "publishedAt": "2026-08-26T13:58:51Z",
   "mandatory": false
 }
