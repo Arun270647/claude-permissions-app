@@ -232,8 +232,19 @@ public class ClaudePromptParserSimple : IClaudePromptParser
         }
         else if (contextStart > 0)
         {
-            // No paragraph break found - use the context start
-            regionStart = contextStart;
+            // No paragraph break found - look for last single newline to avoid including massive content
+            // This prevents including thousands of lines when buffer has no paragraph breaks
+            int lastNewline = precedingText.LastIndexOf('\n');
+            if (lastNewline >= 0)
+            {
+                // Start from after the last newline (beginning of line before question)
+                regionStart = contextStart + lastNewline + 1;
+            }
+            else
+            {
+                // No newlines at all - rare case, start from context beginning
+                regionStart = contextStart;
+            }
         }
 
         // Find the end boundary (common prompt terminators)
