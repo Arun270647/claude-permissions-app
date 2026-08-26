@@ -1,5 +1,6 @@
 namespace ClaudePermissionAssistant.Core.Models;
 
+// Claude Prompter v1.0.0
 public class PermissionRequest
 {
     public required string ToolName { get; init; }
