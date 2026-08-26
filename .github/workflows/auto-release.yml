@@ -9,6 +9,7 @@ on:
       - 'README.md'
       - '**.md'
       - 'latest-*.json'  # Ignore manifest updates from release workflow
+  workflow_dispatch:  # Allow manual trigger from Actions tab
 
 permissions:
   contents: write
