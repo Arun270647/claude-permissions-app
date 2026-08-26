@@ -54,6 +54,46 @@ git checkout dev  # Return to dev immediately
 - Default: Push to `dev`
 - Ask: "Push to dev (testing) or main (production)?"
 
+### Rule #4: Commit Locally, Push ONLY After Approval
+
+**CRITICAL WORKFLOW:**
+- ✅ Make changes on `dev` branch
+- ✅ Run tests and verify everything works
+- ✅ `git add` and `git commit` locally
+- ⚠️ **STOP! DO NOT PUSH!**
+- ✅ Show user what was changed
+- ✅ Wait for user to say "push to dev" or "looks good"
+- ✅ ONLY THEN: `git push origin dev`
+
+**Why this matters:**
+- Multiple small changes shouldn't create multiple versions
+- User reviews changes before they go to remote
+- Prevents accidental version increments
+- Allows grouping related changes together
+
+### Rule #5: Versions Created ONLY When Dev Merges to Main
+
+**VERSION MANAGEMENT:**
+- ❌ DO NOT create new version for every commit
+- ❌ DO NOT increment version when pushing to dev
+- ✅ Accumulate changes on dev branch
+- ✅ Version numbers change ONLY when dev merges to main
+- ✅ Main branch push triggers auto-release workflow
+- ✅ Each main merge = one new version
+
+**Current versioning:**
+- Latest released: v1.0.3 (on main branch)
+- Next version: v1.0.4 (when dev merges to main next time)
+
+**Example workflow:**
+```
+Change 1 → commit to dev (no version change)
+Change 2 → commit to dev (no version change)
+Change 3 → commit to dev (no version change)
+User approves → push to dev (still no version change)
+User says "merge to main" → dev merges to main → v1.0.4 created!
+```
+
 ---
 
 ## 📋 Project Overview
@@ -62,8 +102,9 @@ git checkout dev  # Return to dev immediately
 **Purpose:** Desktop automation tool that auto-approves Claude Code permission prompts  
 **Platforms:** Windows (WPF) and macOS (Avalonia)  
 **Tech Stack:** C# 12, .NET 8.0  
-**Current Version:** v1.0.1 (released)  
-**Next Version:** v1.0.2 (code signing, notarization)
+**Current Version:** v1.0.3 (released on main)  
+**Next Version:** v1.0.4 (when dev merges to main)  
+**Dev Branch Status:** Contains unreleased changes (critical security fix)
 
 **What it does:**
 Monitors terminal windows (CMD, PowerShell, Terminal.app) and automatically selects "Yes, allow from this project" when Claude Code asks for permissions, eliminating manual approval interruptions.
@@ -228,12 +269,19 @@ dotnet test
 # - Include fix description and impact
 # - Reference issue numbers if applicable
 
-# 4. Commit to dev (only after all tests pass)
+# 4. Stage and commit locally (only after all tests pass)
 git add .
 git commit -m "Descriptive commit message"
 
-# 5. Push to dev (triggers CI/CD)
+# 5. STOP! DO NOT PUSH YET!
+# Changes must be reviewed and approved by user BEFORE pushing to dev
+
+# 6. Wait for user approval
+# User must explicitly say: "push to dev" or "looks good, push it"
+
+# 7. Push to dev ONLY after approval
 git push origin dev
+# This triggers CI/CD builds but does NOT create a release
 
 # 6. Check GitHub Actions
 # https://github.com/Arun270647/claude-permissions-app/actions
