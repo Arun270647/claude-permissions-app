@@ -29,8 +29,10 @@ public class BackgroundMonitorService : IDisposable
     private DateTime _lastDiagnosticLog = DateTime.MinValue;
     private DateTime _lastCacheCleanup = DateTime.MinValue;
     private int _consecutiveTextExtractionFailures = 0;
+    private DateTime _lastHandledPromptsCleanup = DateTime.MinValue;
     private const int MaxConsecutiveFailuresBeforeRecovery = 10;
     private const int CacheCleanupIntervalMinutes = 5;
+    private const int HandledPromptsCleanupIntervalMinutes = 10;
 
     public event EventHandler<StatisticsUpdatedEventArgs>? StatisticsUpdated;
     public event EventHandler<string>? StatusChanged;
@@ -119,6 +121,7 @@ public class BackgroundMonitorService : IDisposable
             _cycleCount = 0;
             _lastDiagnosticLog = DateTime.MinValue;
             _lastCacheCleanup = DateTime.UtcNow; // Initialize cache cleanup timer
+            _lastHandledPromptsCleanup = DateTime.UtcNow; // Initialize handled prompts cleanup timer
             _consecutiveTextExtractionFailures = 0;
 
             _logger.LogInfo($"═══════════════════════════════════════");
@@ -221,6 +224,19 @@ public class BackgroundMonitorService : IDisposable
                 }
             }
 
+            // Periodic cleanup of old handled prompts (every 10 minutes) for 24/7 stability
+            var shouldCleanupHandledPrompts = (DateTime.UtcNow - _lastHandledPromptsCleanup).TotalMinutes >= HandledPromptsCleanupIntervalMinutes;
+            if (shouldCleanupHandledPrompts)
+            {
+                _executor.CleanupOldHandledPrompts();
+                _lastHandledPromptsCleanup = DateTime.UtcNow;
+
+                if (shouldLogDiagnostics)
+                {
+                    _logger.LogInfo("MONITOR_HANDLED_PROMPTS_CLEANUP: Periodic cleanup completed (24/7 stability)");
+                }
+            }
+
             // Check if terminal still exists
             if (!IsTerminalAlive(session.Terminal))
             {
@@ -318,7 +334,18 @@ public class BackgroundMonitorService : IDisposable
                 return;
             }
 
-            // Prompt detected with persistent approval option
+            // Check if already handled (duplicate protection) - do this BEFORE incrementing statistics
+            if (_executor.IsPromptAlreadyHandled(detectedPrompt))
+            {
+                // Already handled - skip (don't count as a new detection)
+                if (shouldLogDiagnostics)
+                {
+                    _logger.LogInfo($"MONITOR_REJECTION: Prompt already handled (duplicate protection)");
+                }
+                return;
+            }
+
+            // Prompt detected with persistent approval option (and not a duplicate)
             _statistics.PromptsDetected++;
             session.LastActivity = DateTime.UtcNow;
 
@@ -331,17 +358,6 @@ public class BackgroundMonitorService : IDisposable
             });
 
             NotifyStatisticsUpdated();
-
-            // Check if already handled (duplicate protection)
-            if (_executor.IsPromptAlreadyHandled(detectedPrompt))
-            {
-                // Already handled - skip
-                if (shouldLogDiagnostics)
-                {
-                    _logger.LogInfo($"MONITOR_REJECTION: Prompt already handled (duplicate protection)");
-                }
-                return;
-            }
 
             // Prompt is ready for execution
             _logger.LogInfo($"MONITOR_EXECUTION_START: PromptType={detectedPrompt.Request.PromptType}, Option={detectedPrompt.Request.PersistentApprovalOptionNumber}");

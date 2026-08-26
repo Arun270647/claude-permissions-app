@@ -196,11 +196,39 @@ git checkout dev
 # - Cross-platform → edit src/Shared/
 # - Documentation → edit docs/ or README.md
 
-# 3. Test locally (if code changes)
-dotnet build
-dotnet test
+# 3. MANDATORY TESTING (for all code changes and bug fixes)
+#    MUST complete ALL steps before committing:
 
-# 4. Commit to dev
+# 3a. Build the application
+./scripts/rebuild.bat  # Windows
+# OR
+./scripts/build-macos.sh  # macOS
+
+# 3b. Run all unit tests
+dotnet test
+# MUST show: All 91 tests passing
+
+# 3c. E2E testing (for bug fixes and features)
+# - Start the built application
+# - Test the specific fix/feature manually
+# - Test common workflows (add terminal, detect prompts, auto-approve)
+# - Verify statistics are accurate
+# - Check logs for errors
+
+# 3d. Document the fix (for bug fixes)
+# - Create/update docs/internal/[FIX_NAME].md with:
+#   - Problem description
+#   - Root cause analysis
+#   - Solution implemented
+#   - Testing instructions
+#   - Verification steps
+
+# 3e. Update CHANGELOG.md
+# - Add entry under "Unreleased" or next version
+# - Include fix description and impact
+# - Reference issue numbers if applicable
+
+# 4. Commit to dev (only after all tests pass)
 git add .
 git commit -m "Descriptive commit message"
 

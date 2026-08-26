@@ -115,15 +115,25 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
 
         if (!foregroundVerified)
         {
-            _logger.LogError("Foreground verification FAILED. Target: 0x{Target:X}, Actual: 0x{Actual:X} - ABORTING to prevent wrong window injection",
+            _logger.LogError("Foreground verification FAILED. Target: 0x{Target:X}, Actual: 0x{Actual:X}",
                 targetHwnd.ToInt64(), foregroundHwnd.ToInt64());
 
-            return CreateFailureResult(originalPrompt, startTime, optionNumber,
-                $"Foreground window mismatch - expected 0x{targetHwnd.ToInt64():X}, got 0x{foregroundHwnd.ToInt64():X}",
-                ExecutionState.Failed);
+            if (_config.RequireForegroundVerification)
+            {
+                _logger.LogError("ABORTING to prevent wrong window injection (RequireForegroundVerification=true)");
+                return CreateFailureResult(originalPrompt, startTime, optionNumber,
+                    $"Foreground window mismatch - expected 0x{targetHwnd.ToInt64():X}, got 0x{foregroundHwnd.ToInt64():X}",
+                    ExecutionState.Failed);
+            }
+            else
+            {
+                _logger.LogWarning("Continuing despite verification failure (RequireForegroundVerification=false - test mode)");
+            }
         }
-
-        _logger.LogInformation("Foreground verified: 0x{Hwnd:X}", foregroundHwnd.ToInt64());
+        else
+        {
+            _logger.LogInformation("Foreground verified: 0x{Hwnd:X}", foregroundHwnd.ToInt64());
+        }
 
         state = ExecutionState.Focused;
 
@@ -198,8 +208,9 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
             var key = GetPromptKey(prompt);
             _handledPrompts[key] = DateTime.UtcNow;
 
-            // Cleanup old entries
-            if (_handledPrompts.Count > 1000)
+            // Cleanup old entries more aggressively for 24/7 stability
+            // Clean up every 100 entries (instead of 1000) to prevent buildup
+            if (_handledPrompts.Count % 100 == 0 && _handledPrompts.Count > 0)
             {
                 var cutoff = DateTime.UtcNow.AddMinutes(-5);
                 var oldKeys = _handledPrompts
@@ -212,7 +223,10 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
                     _handledPrompts.Remove(oldKey);
                 }
 
-                _logger.LogDebug("Cleaned up {Count} old prompt entries", oldKeys.Count);
+                if (oldKeys.Count > 0)
+                {
+                    _logger.LogDebug("Inline cleanup: Removed {Count} old prompt entries (count: {Total})", oldKeys.Count, _handledPrompts.Count);
+                }
             }
         }
     }
@@ -223,6 +237,32 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
         {
             _handledPrompts.Clear();
             _logger.LogInformation("Cleared all handled prompts");
+        }
+    }
+
+    /// <summary>
+    /// Periodic cleanup of old handled prompts for 24/7 stability
+    /// Removes entries older than 5 minutes to prevent memory bloat
+    /// </summary>
+    public void CleanupOldHandledPrompts()
+    {
+        lock (_lock)
+        {
+            var cutoff = DateTime.UtcNow.AddMinutes(-5);
+            var oldKeys = _handledPrompts
+                .Where(kvp => kvp.Value < cutoff)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var oldKey in oldKeys)
+            {
+                _handledPrompts.Remove(oldKey);
+            }
+
+            if (oldKeys.Count > 0)
+            {
+                _logger.LogDebug("Periodic cleanup: Removed {Count} old prompt entries (24/7 stability)", oldKeys.Count);
+            }
         }
     }
 
