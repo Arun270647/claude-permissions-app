@@ -1,0 +1,9 @@
+{
+  "version": "1.0.2",
+  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.2/ClaudePrompter-Windows-v1.0.2.exe",
+  "checksum": "6c67c6eb77a069f6d5b9a67e025701439ec98acda1ce0bb493dae81568c8677d",
+  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.2",
+  "patchNotes": "## Fixed\n- **Accurate prompt counting** - Fixed misleading statistics\n- **24/7 stability improvements** - Enhanced memory management\n- **Test compatibility** - Respects config settings\n- **Parser PromptRegion** - Handles massive buffers correctly",
+  "publishedAt": "2026-08-26T13:33:55Z",
+  "mandatory": false
+}
