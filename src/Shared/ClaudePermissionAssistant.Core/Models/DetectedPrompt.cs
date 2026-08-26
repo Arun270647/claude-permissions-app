@@ -3,6 +3,7 @@ namespace ClaudePermissionAssistant.Core.Models;
 /// <summary>
 /// Represents a detected permission prompt from Claude Code.
 /// This model is used across both Windows and macOS platforms.
+/// Version: 1.0.0
 /// </summary>
 public class DetectedPrompt
 {
