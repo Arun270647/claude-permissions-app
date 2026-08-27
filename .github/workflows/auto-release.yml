@@ -32,29 +32,61 @@ jobs:
     - name: Extract version and patch notes from CHANGELOG
       id: extract
       run: |
-        # Extract the first version from CHANGELOG.md (skip [Unreleased])
-        VERSION=$(grep '## \[' CHANGELOG.md | grep -v 'Unreleased' | head -n 1 | sed 's/## \[\(.*\)\].*/\1/')
+        git fetch --tags origin
 
-        if [ -z "$VERSION" ]; then
-          echo "has_version=false" >> $GITHUB_OUTPUT
-          echo "No version found in CHANGELOG.md (only [Unreleased] found)"
-          exit 0
+        # Check if [Unreleased] section has content - if so, auto-version it
+        HAS_UNRELEASED=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found && /\S/' CHANGELOG.md | head -1)
+
+        if [ -n "$HAS_UNRELEASED" ]; then
+          # Auto-calculate next version from latest tag
+          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          if [ -z "$LATEST_TAG" ]; then
+            VERSION="1.0.0"
+          else
+            # Strip 'v' prefix and bump patch
+            CURRENT="${LATEST_TAG#v}"
+            MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+            MINOR=$(echo "$CURRENT" | cut -d. -f2)
+            PATCH=$(echo "$CURRENT" | cut -d. -f3)
+            VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+
+          echo "Auto-versioning [Unreleased] -> [$VERSION] - $(date -u +'%Y-%m-%d')"
+
+          # Replace [Unreleased] with the new version and date
+          sed -i "s/^## \[Unreleased\]/## [$VERSION] - $(date -u +'%Y-%m-%d')/" CHANGELOG.md
+
+          # Commit the versioned CHANGELOG
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add CHANGELOG.md
+          git commit -m "chore: Auto-version CHANGELOG to v$VERSION [skip ci]"
+          git push origin main
+
+        else
+          # Fallback: look for an explicit versioned section not yet tagged
+          VERSION=$(grep '## \[' CHANGELOG.md | grep -v 'Unreleased' | head -n 1 | sed 's/## \[\(.*\)\].*/\1/')
+
+          if [ -z "$VERSION" ]; then
+            echo "has_version=false" >> $GITHUB_OUTPUT
+            echo "No version found in CHANGELOG.md"
+            exit 0
+          fi
         fi
 
         echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "has_version=true" >> $GITHUB_OUTPUT
         echo "Found version: $VERSION"
 
-        # Check if tag already exists (fetch all tags first)
-        git fetch --tags origin
+        # Check if tag already exists
         if git rev-parse "v$VERSION" >/dev/null 2>&1; then
           echo "has_version=false" >> $GITHUB_OUTPUT
           echo "Tag v$VERSION already exists, skipping release"
           exit 0
         fi
 
+        echo "has_version=true" >> $GITHUB_OUTPUT
+
         # Extract patch notes for this version
-        # Get text between ## [VERSION] and the next ## [ (or EOF if last section)
         awk "/^## \[$VERSION\]/{found=1; next} found && /^## \[/{exit} found" CHANGELOG.md | head -c 4000 > patch_notes.txt
 
         # Set output using delimiter

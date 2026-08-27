@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CI/CD visibility** - Build workflows now trigger on workflow file changes (previously invisible on Actions tab)
+- **Release patch notes** - Fixed CHANGELOG extraction failing when version is last section
+- **Manifest JSON generation** - Use jq for reliable JSON output instead of broken heredoc interpolation
+- **Auto-versioning** - [Unreleased] section auto-converts to next version number on release
+
 ### Planned
 - iTerm2 support for macOS
 - Alacritty terminal support
