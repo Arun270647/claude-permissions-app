@@ -5,6 +5,21 @@ All notable changes to Claude Permission Assistant will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-08-27
+
+### Added
+- **Claude direct terminal support** — The app now recognizes Claude Code's own terminal window (opened via desktop app or Start Menu), not just CMD/PowerShell/Windows Terminal
+- **New `ClaudeTerminal` terminal type** — Properly identifies and auto-verifies Claude's native window
+
+### Fixed
+- **Pre-existing prompts now get approved** — Previously, if you opened the app after a prompt was already on screen, it would fail to approve it (foreground steal failed, then prompt was incorrectly marked as "handled" and never retried). Now only successful executions are marked as handled.
+- **False positive keystroke injection** — Tightened prompt parser to require Claude's exact numbered option format (`1. Yes` / `2. No`). Previously, any terminal text containing "Do you want to" with "Yes" and "No" anywhere would trigger false approvals.
+- **Foreground window reliability** — Added `AttachThreadInput` + `BringWindowToTop` with 3 retry attempts to reliably steal focus from the app's own window when approving prompts.
+
+### Improved
+- **Increased timing delays** — Focus delay 100ms→200ms, key press delay 50ms→100ms, verification delay 300ms→500ms for more reliable keystroke delivery
+- **Retry logic** — Foreground verification now retries 3 times before failing, instead of giving up immediately
+
 ## [1.0.1] - 2026-08-27
 
 ### Fixed
