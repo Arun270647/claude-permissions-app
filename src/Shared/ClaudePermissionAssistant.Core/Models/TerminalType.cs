@@ -8,5 +8,6 @@ public enum TerminalType
     PowerShell,
     PowerShell7,
     GitBash,
+    ClaudeTerminal,
     Unsupported
 }

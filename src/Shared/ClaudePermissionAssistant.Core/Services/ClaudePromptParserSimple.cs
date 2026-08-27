@@ -127,26 +127,40 @@ public class ClaudePromptParserSimple : IClaudePromptParser
         return true;
     }
 
+    // Pattern for Claude Code's actual numbered option format
+    // Matches: "  1. Yes", "> 1. Yes", "  2. No", inline "3. No" etc.
+    private static readonly Regex ClaudeOptionLinePattern = new(
+        @"(?:^|[\s>])(\d+)[\.\)]\s*(Yes|No)\b",
+        RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled
+    );
+
     public bool ContainsPromptMarkers(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
             return false;
 
-        // Must contain "Do you want to" question
-        bool hasQuestion = text.Contains("Do you want to", StringComparison.OrdinalIgnoreCase);
-        if (!hasQuestion)
+        // Must contain the specific "Do you want to [action]?" question pattern
+        if (!ClaudeQuestionPattern.IsMatch(text))
             return false;
 
-        // Must contain at least one numbered option (simple check)
-        var matches = OptionPattern.Matches(text);
-        if (matches.Count == 0)
+        // Must have numbered options that START with "Yes" or "No" (Claude's actual format)
+        var optionMatches = ClaudeOptionLinePattern.Matches(text);
+        if (optionMatches.Count < 2)
             return false;
 
-        // Must contain at least one "Yes" and one "No" option
-        bool hasYes = text.Contains("Yes", StringComparison.OrdinalIgnoreCase);
-        bool hasNo = text.Contains("No", StringComparison.OrdinalIgnoreCase);
+        // Must have at least one Yes option and one No option as numbered choices
+        bool hasYesOption = false;
+        bool hasNoOption = false;
+        foreach (Match match in optionMatches)
+        {
+            var optionText = match.Groups[2].Value;
+            if (optionText.Equals("Yes", StringComparison.OrdinalIgnoreCase))
+                hasYesOption = true;
+            if (optionText.Equals("No", StringComparison.OrdinalIgnoreCase))
+                hasNoOption = true;
+        }
 
-        return hasYes && hasNo;
+        return hasYesOption && hasNoOption;
     }
 
     private PermissionOption[] ExtractOptionsFromRegion(string promptRegion)
