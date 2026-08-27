@@ -76,8 +76,12 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
             {
                 var attemptResult = ExecuteAttempt(prompt, redetected, optionNumber, ref state);
 
-                // Keys were sent, mark as handled and return success
-                MarkPromptAsHandled(prompt);
+                // Only mark as handled on success — failed attempts should be retried
+                if (attemptResult.Success)
+                {
+                    MarkPromptAsHandled(prompt);
+                }
+
                 return attemptResult;
             }
         }
@@ -117,42 +121,72 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
                 ExecutionState.Failed);
         }
 
-        // Step 3.1: Bring terminal to foreground
+        // Step 3.1: Bring terminal to foreground with retry
         _logger.LogDebug("Bringing terminal to foreground");
 
+        // Allow our process to set foreground window (overcomes Windows focus-stealing prevention)
+        var targetThreadId = GetWindowThreadProcessId(targetHwnd, out _);
+        var currentThreadId = GetCurrentThreadId();
+        bool threadsAttached = false;
 
-        if (!SetForegroundWindow(targetHwnd))
+        if (targetThreadId != currentThreadId)
         {
-            _logger.LogWarning("SetForegroundWindow returned false");
+            threadsAttached = AttachThreadInput(currentThreadId, targetThreadId, true);
         }
 
-        // Step 3.2: Wait for focus transition
-        Thread.Sleep(_config.FocusDelayMs);
+        bool foregroundVerified = false;
+        try
+        {
+            for (int attempt = 0; attempt < _config.ForegroundRetryAttempts; attempt++)
+            {
+                if (!SetForegroundWindow(targetHwnd))
+                {
+                    _logger.LogWarning("SetForegroundWindow returned false (attempt {Attempt})", attempt + 1);
+                    BringWindowToTop(targetHwnd);
+                }
 
-        // SECURITY FIX: Make foreground window verification MANDATORY (abort on mismatch)
-        var foregroundHwnd = GetForegroundWindow();
-        bool foregroundVerified = foregroundHwnd == targetHwnd;
+                Thread.Sleep(_config.FocusDelayMs);
+
+                var foregroundHwnd = GetForegroundWindow();
+                foregroundVerified = foregroundHwnd == targetHwnd;
+
+                if (foregroundVerified)
+                {
+                    _logger.LogInformation("Foreground verified: 0x{Hwnd:X} (attempt {Attempt})",
+                        foregroundHwnd.ToInt64(), attempt + 1);
+                    break;
+                }
+
+                _logger.LogWarning("Foreground verification attempt {Attempt} failed. Target: 0x{Target:X}, Actual: 0x{Actual:X}",
+                    attempt + 1, targetHwnd.ToInt64(), foregroundHwnd.ToInt64());
+
+                if (attempt < _config.ForegroundRetryAttempts - 1)
+                {
+                    Thread.Sleep(_config.ForegroundRetryDelayMs);
+                }
+            }
+        }
+        finally
+        {
+            if (threadsAttached)
+            {
+                AttachThreadInput(currentThreadId, targetThreadId, false);
+            }
+        }
 
         if (!foregroundVerified)
         {
-            _logger.LogError("Foreground verification FAILED. Target: 0x{Target:X}, Actual: 0x{Actual:X}",
-                targetHwnd.ToInt64(), foregroundHwnd.ToInt64());
-
             if (_config.RequireForegroundVerification)
             {
-                _logger.LogError("ABORTING to prevent wrong window injection (RequireForegroundVerification=true)");
+                _logger.LogError("ABORTING after {Attempts} attempts to set foreground window", _config.ForegroundRetryAttempts);
                 return CreateFailureResult(originalPrompt, startTime, optionNumber,
-                    $"Foreground window mismatch - expected 0x{targetHwnd.ToInt64():X}, got 0x{foregroundHwnd.ToInt64():X}",
+                    $"Foreground window mismatch after {_config.ForegroundRetryAttempts} attempts",
                     ExecutionState.Failed);
             }
             else
             {
                 _logger.LogWarning("Continuing despite verification failure (RequireForegroundVerification=false - test mode)");
             }
-        }
-        else
-        {
-            _logger.LogInformation("Foreground verified: 0x{Hwnd:X}", foregroundHwnd.ToInt64());
         }
 
         state = ExecutionState.Focused;
@@ -379,6 +413,18 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
 
     [DllImport("user32.dll")]
     private static extern bool IsWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool BringWindowToTop(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
 
     [DllImport("user32.dll")]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);

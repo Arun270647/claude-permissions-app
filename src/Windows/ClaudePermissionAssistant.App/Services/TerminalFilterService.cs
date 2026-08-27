@@ -98,6 +98,13 @@ public class TerminalFilterService
             return true;
         }
 
+        // Claude Code direct terminal (opened via desktop app or Start Menu)
+        if (processName.Contains("claude"))
+        {
+            terminalType = TerminalType.ClaudeTerminal;
+            return true;
+        }
+
         // Not a known terminal
         return false;
     }

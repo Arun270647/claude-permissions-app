@@ -14,7 +14,8 @@ public class ClaudeSessionDetector : IClaudeSessionDetector
         "powershell",
         "pwsh",
         "bash",
-        "mintty"
+        "mintty",
+        "claude"
     };
 
     private static readonly string[] ClaudeProcessNames =
@@ -140,7 +141,17 @@ public class ClaudeSessionDetector : IClaudeSessionDetector
             var windowHandle = new IntPtr(windowElement.Current.NativeWindowHandle);
 
             var terminalType = DetermineTerminalType(process.ProcessName);
-            var claudeProcessId = FindClaudeProcess(processId);
+
+            // When the process IS claude itself, it's both terminal and Claude process
+            int? claudeProcessId;
+            if (terminalType == TerminalType.ClaudeTerminal)
+            {
+                claudeProcessId = processId;
+            }
+            else
+            {
+                claudeProcessId = FindClaudeProcess(processId);
+            }
 
             return new ClaudeSession
             {
@@ -172,6 +183,8 @@ public class ClaudeSessionDetector : IClaudeSessionDetector
             return TerminalType.PowerShell;
         if (lower.Contains("bash") || lower.Contains("mintty"))
             return TerminalType.GitBash;
+        if (lower.Contains("claude"))
+            return TerminalType.ClaudeTerminal;
 
         return TerminalType.Unknown;
     }

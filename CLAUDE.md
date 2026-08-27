@@ -82,8 +82,8 @@ git checkout dev  # Return to dev immediately
 - ✅ Each main merge = one new version
 
 **Current versioning:**
-- Latest released: v1.0.3 (on main branch)
-- Next version: v1.0.4 (when dev merges to main next time)
+- Latest released: v1.0.1 (on main branch)
+- Next version: v1.0.2 (when dev merges to main next time)
 
 **Example workflow:**
 ```
@@ -102,8 +102,8 @@ User says "merge to main" → dev merges to main → v1.0.4 created!
 **Purpose:** Desktop automation tool that auto-approves Claude Code permission prompts  
 **Platforms:** Windows (WPF) and macOS (Avalonia)  
 **Tech Stack:** C# 12, .NET 8.0  
-**Current Version:** v1.0.3 (released on main)  
-**Next Version:** v1.0.4 (when dev merges to main)  
+**Current Version:** v1.0.1 (released on main)  
+**Next Version:** v1.0.2 (when dev merges to main)  
 **Dev Branch Status:** Contains unreleased changes (critical security fix)
 
 **What it does:**
