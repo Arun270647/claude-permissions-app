@@ -230,42 +230,39 @@ jobs:
 
     - name: Generate Windows update manifest
       run: |
-        cat > latest-windows.json << EOF
-        {
-          "version": "${{ steps.version.outputs.VERSION }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePrompter-Windows-v${{ steps.version.outputs.VERSION }}.exe",
-          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
-          "patchNotes": "Claude Prompter v${{ steps.version.outputs.VERSION }}\n\nSee full release notes at:\nhttps://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
-          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
-          "mandatory": true
-        }
-        EOF
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        jq -n \
+          --arg ver "$VERSION" \
+          --arg url "https://github.com/Arun270647/claude-permissions-app/releases/download/v${VERSION}/ClaudePrompter-Windows-v${VERSION}.exe" \
+          --arg changelog "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${VERSION}" \
+          --arg patchNotes "Claude Prompter v${VERSION}\n\nSee full release notes at:\nhttps://github.com/Arun270647/claude-permissions-app/releases/tag/v${VERSION}" \
+          --arg publishedAt "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+          '{version: $ver, url: $url, changelog: $changelog, patchNotes: $patchNotes, publishedAt: $publishedAt, mandatory: true}' \
+          > latest-windows.json
 
     - name: Generate macOS arm64 update manifest
       run: |
-        cat > latest-macos-arm64.json << EOF
-        {
-          "version": "${{ steps.version.outputs.VERSION }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePrompter-macOS-arm64-v${{ steps.version.outputs.VERSION }}.dmg",
-          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
-          "patchNotes": "Claude Prompter v${{ steps.version.outputs.VERSION }}\n\nSee full release notes at:\nhttps://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
-          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
-          "mandatory": true
-        }
-        EOF
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        jq -n \
+          --arg ver "$VERSION" \
+          --arg url "https://github.com/Arun270647/claude-permissions-app/releases/download/v${VERSION}/ClaudePrompter-macOS-arm64-v${VERSION}.dmg" \
+          --arg changelog "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${VERSION}" \
+          --arg patchNotes "Claude Prompter v${VERSION}\n\nSee full release notes at:\nhttps://github.com/Arun270647/claude-permissions-app/releases/tag/v${VERSION}" \
+          --arg publishedAt "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+          '{version: $ver, url: $url, changelog: $changelog, patchNotes: $patchNotes, publishedAt: $publishedAt, mandatory: true}' \
+          > latest-macos-arm64.json
 
     - name: Generate macOS x64 update manifest
       run: |
-        cat > latest-macos-x64.json << EOF
-        {
-          "version": "${{ steps.version.outputs.VERSION }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ steps.version.outputs.VERSION }}/ClaudePrompter-macOS-x64-v${{ steps.version.outputs.VERSION }}.dmg",
-          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
-          "patchNotes": "Claude Prompter v${{ steps.version.outputs.VERSION }}\n\nSee full release notes at:\nhttps://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ steps.version.outputs.VERSION }}",
-          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
-          "mandatory": true
-        }
-        EOF
+        VERSION="${{ steps.version.outputs.VERSION }}"
+        jq -n \
+          --arg ver "$VERSION" \
+          --arg url "https://github.com/Arun270647/claude-permissions-app/releases/download/v${VERSION}/ClaudePrompter-macOS-x64-v${VERSION}.dmg" \
+          --arg changelog "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${VERSION}" \
+          --arg patchNotes "Claude Prompter v${VERSION}\n\nSee full release notes at:\nhttps://github.com/Arun270647/claude-permissions-app/releases/tag/v${VERSION}" \
+          --arg publishedAt "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+          '{version: $ver, url: $url, changelog: $changelog, patchNotes: $patchNotes, publishedAt: $publishedAt, mandatory: true}' \
+          > latest-macos-x64.json
 
     - name: Commit update manifests to main
       run: |
