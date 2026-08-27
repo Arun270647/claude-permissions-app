@@ -1,9 +1,9 @@
 {
-  "version": "1.0.0",
-  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.0/ClaudePrompter-Windows-v1.0.0.exe",
-  "checksum": "1510ebec1bf44aae9ef9eacfd062bb16c104526b71d8e41b66fb903a0d395956",
-  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.0",
-  "patchNotes": "\n",
-  "publishedAt": "2026-08-26T16:47:15Z",
+  "version": "1.0.1",
+  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.1/ClaudePrompter-Windows-v1.0.1.exe",
+  "checksum": "80b7cbd1f4383eb0427ec521d46886ef76f7d447614abb9c076460b89ef64e2d",
+  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.1",
+  "patchNotes": "\n### Fixed\n- **CI/CD visibility** - Build workflows now trigger on workflow file changes (previously invisible on Actions tab)\n- **Release patch notes** - Fixed CHANGELOG extraction failing when version is last section\n- **Manifest JSON generation** - Use jq for reliable JSON output instead of broken heredoc interpolation\n- **Auto-versioning** - [Unreleased] section auto-converts to next version number on release\n\n### Planned\n- iTerm2 support for macOS\n- Alacritty terminal support\n- Homebrew for",
+  "publishedAt": "2026-08-27T04:45:43Z",
   "mandatory": false
 }
