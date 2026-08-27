@@ -1,9 +1,9 @@
 {
-  "version": "1.0.1",
-  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.1/ClaudePrompter-macOS-x64-v1.0.1.dmg",
-  "checksum": "55b01b911c7c90ef746cb6ad28f3139207e1ce173667a38287136e3ec9e3c496",
-  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.1",
-  "patchNotes": "\n### Fixed\n- **CI/CD visibility** - Build workflows now trigger on workflow file changes (previously invisible on Actions tab)\n- **Release patch notes** - Fixed CHANGELOG extraction failing when version is last section\n- **Manifest JSON generation** - Use jq for reliable JSON output instead of broken heredoc interpolation\n- **Auto-versioning** - [Unreleased] section auto-converts to next version number on release\n\n### Planned\n- iTerm2 support for macOS\n- Alacritty terminal support\n- Homebrew for",
-  "publishedAt": "2026-08-27T04:45:43Z",
+  "version": "1.0.2",
+  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.2/ClaudePrompter-macOS-x64-v1.0.2.dmg",
+  "checksum": "93dc744f53056622ea05122ac08b85719af88f62ecf89a989c637907a93afa73",
+  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.2",
+  "patchNotes": "\n### Added\n- **Claude direct terminal support** — The app now recognizes Claude Code's own terminal window (opened via desktop app or Start Menu), not just CMD/PowerShell/Windows Terminal\n- **New `ClaudeTerminal` terminal type** — Properly identifies and auto-verifies Claude's native window\n\n### Fixed\n- **Pre-existing prompts now get approved** — Previously, if you opened the app after a prompt was already on screen, it would fail to approve it (foreground steal failed, then prompt was inc",
+  "publishedAt": "2026-08-27T13:10:58Z",
   "mandatory": false
 }
