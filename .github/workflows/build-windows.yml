@@ -8,13 +8,14 @@ on:
     paths:
       - 'src/Windows/**'
       - 'src/Shared/**'
-      - '.github/workflows/build-windows.yml'
+      - '.github/workflows/**'
   pull_request:
     branches:
       - main
     paths:
       - 'src/Windows/**'
       - 'src/Shared/**'
+      - '.github/workflows/**'
 
 jobs:
   build:

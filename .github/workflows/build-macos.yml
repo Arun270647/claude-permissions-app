@@ -8,13 +8,14 @@ on:
     paths:
       - 'src/macOS/**'
       - 'src/Shared/**'
-      - '.github/workflows/build-macos.yml'
+      - '.github/workflows/**'
   pull_request:
     branches:
       - main
     paths:
       - 'src/macOS/**'
       - 'src/Shared/**'
+      - '.github/workflows/**'
 
 jobs:
   build:

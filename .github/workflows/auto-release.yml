@@ -54,16 +54,13 @@ jobs:
         fi
 
         # Extract patch notes for this version
-        # Get text between ## [VERSION] and next ## [
-        PATCH_NOTES=$(awk "/^## \[$VERSION\]/,/^## \[/" CHANGELOG.md | sed '1d;$d' | head -c 4000)
+        # Get text between ## [VERSION] and the next ## [ (or EOF if last section)
+        awk "/^## \[$VERSION\]/{found=1; next} found && /^## \[/{exit} found" CHANGELOG.md | head -c 4000 > patch_notes.txt
 
-        # Save to file for multi-line output
-        echo "$PATCH_NOTES" > patch_notes.txt
-
-        # Set output
-        echo "patch_notes<<EOF" >> $GITHUB_OUTPUT
+        # Set output using delimiter
+        echo "patch_notes<<PATCH_EOF" >> $GITHUB_OUTPUT
         cat patch_notes.txt >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        echo "PATCH_EOF" >> $GITHUB_OUTPUT
 
   build-windows:
     needs: detect-version
@@ -287,56 +284,61 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Write patch notes to file for manifest generation
+      run: |
+        cat > patch_notes_raw.txt << 'PATCH_EOF'
+        ${{ needs.detect-version.outputs.patch_notes }}
+        PATCH_EOF
+        head -c 500 patch_notes_raw.txt | jq -Rs . > patch_notes_json.txt
+
     - name: Generate Windows update manifest with checksum
       run: |
-        WINDOWS_FILE="release-assets/windows-release/ClaudePrompter-Windows-v${{ needs.detect-version.outputs.version }}.exe"
+        VERSION="${{ needs.detect-version.outputs.version }}"
+        WINDOWS_FILE="release-assets/windows-release/ClaudePrompter-Windows-v${VERSION}.exe"
         CHECKSUM=$(sha256sum "$WINDOWS_FILE" | awk '{print $1}')
+        PATCH_NOTES_JSON=$(cat patch_notes_json.txt)
 
-        cat > latest-windows.json << EOF
-        {
-          "version": "${{ needs.detect-version.outputs.version }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ needs.detect-version.outputs.version }}/ClaudePrompter-Windows-v${{ needs.detect-version.outputs.version }}.exe",
-          "checksum": "$CHECKSUM",
-          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ needs.detect-version.outputs.version }}",
-          "patchNotes": $(echo "${{ needs.detect-version.outputs.patch_notes }}" | head -c 500 | jq -Rs .),
-          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
-          "mandatory": false
-        }
-        EOF
+        jq -n \
+          --arg ver "$VERSION" \
+          --arg url "https://github.com/Arun270647/claude-permissions-app/releases/download/v${VERSION}/ClaudePrompter-Windows-v${VERSION}.exe" \
+          --arg checksum "$CHECKSUM" \
+          --arg changelog "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${VERSION}" \
+          --arg patchNotes "$(cat patch_notes_raw.txt | head -c 500)" \
+          --arg publishedAt "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+          '{version: $ver, url: $url, checksum: $checksum, changelog: $changelog, patchNotes: $patchNotes, publishedAt: $publishedAt, mandatory: false}' \
+          > latest-windows.json
 
     - name: Generate macOS arm64 update manifest with checksum
       run: |
-        MACOS_FILE="release-assets/macos-release-arm64/ClaudePrompter-macOS-arm64-v${{ needs.detect-version.outputs.version }}.dmg"
+        VERSION="${{ needs.detect-version.outputs.version }}"
+        MACOS_FILE="release-assets/macos-release-arm64/ClaudePrompter-macOS-arm64-v${VERSION}.dmg"
         CHECKSUM=$(sha256sum "$MACOS_FILE" | awk '{print $1}')
 
-        cat > latest-macos-arm64.json << EOF
-        {
-          "version": "${{ needs.detect-version.outputs.version }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ needs.detect-version.outputs.version }}/ClaudePrompter-macOS-arm64-v${{ needs.detect-version.outputs.version }}.dmg",
-          "checksum": "$CHECKSUM",
-          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ needs.detect-version.outputs.version }}",
-          "patchNotes": $(echo "${{ needs.detect-version.outputs.patch_notes }}" | head -c 500 | jq -Rs .),
-          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
-          "mandatory": false
-        }
-        EOF
+        jq -n \
+          --arg ver "$VERSION" \
+          --arg url "https://github.com/Arun270647/claude-permissions-app/releases/download/v${VERSION}/ClaudePrompter-macOS-arm64-v${VERSION}.dmg" \
+          --arg checksum "$CHECKSUM" \
+          --arg changelog "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${VERSION}" \
+          --arg patchNotes "$(cat patch_notes_raw.txt | head -c 500)" \
+          --arg publishedAt "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+          '{version: $ver, url: $url, checksum: $checksum, changelog: $changelog, patchNotes: $patchNotes, publishedAt: $publishedAt, mandatory: false}' \
+          > latest-macos-arm64.json
 
     - name: Generate macOS x64 update manifest with checksum
       run: |
-        MACOS_FILE="release-assets/macos-release-x64/ClaudePrompter-macOS-x64-v${{ needs.detect-version.outputs.version }}.dmg"
+        VERSION="${{ needs.detect-version.outputs.version }}"
+        MACOS_FILE="release-assets/macos-release-x64/ClaudePrompter-macOS-x64-v${VERSION}.dmg"
         CHECKSUM=$(sha256sum "$MACOS_FILE" | awk '{print $1}')
 
-        cat > latest-macos-x64.json << EOF
-        {
-          "version": "${{ needs.detect-version.outputs.version }}",
-          "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v${{ needs.detect-version.outputs.version }}/ClaudePrompter-macOS-x64-v${{ needs.detect-version.outputs.version }}.dmg",
-          "checksum": "$CHECKSUM",
-          "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${{ needs.detect-version.outputs.version }}",
-          "patchNotes": $(echo "${{ needs.detect-version.outputs.patch_notes }}" | head -c 500 | jq -Rs .),
-          "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
-          "mandatory": false
-        }
-        EOF
+        jq -n \
+          --arg ver "$VERSION" \
+          --arg url "https://github.com/Arun270647/claude-permissions-app/releases/download/v${VERSION}/ClaudePrompter-macOS-x64-v${VERSION}.dmg" \
+          --arg checksum "$CHECKSUM" \
+          --arg changelog "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v${VERSION}" \
+          --arg patchNotes "$(cat patch_notes_raw.txt | head -c 500)" \
+          --arg publishedAt "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+          '{version: $ver, url: $url, checksum: $checksum, changelog: $changelog, patchNotes: $patchNotes, publishedAt: $publishedAt, mandatory: false}' \
+          > latest-macos-x64.json
 
     - name: Commit update manifests to main
       continue-on-error: true
