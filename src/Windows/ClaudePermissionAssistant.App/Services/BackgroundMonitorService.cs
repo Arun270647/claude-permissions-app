@@ -34,6 +34,11 @@ public class BackgroundMonitorService : IDisposable
     private const int CacheCleanupIntervalMinutes = 5;
     private const int HandledPromptsCleanupIntervalMinutes = 10;
 
+    // Conversation boundary detection
+    private string? _lastTerminalTextHash;
+    private int _lastTerminalTextLength = 0;
+    private DateTime _lastConversationBoundary = DateTime.MinValue;
+
     public event EventHandler<StatisticsUpdatedEventArgs>? StatisticsUpdated;
     public event EventHandler<string>? StatusChanged;
     public event EventHandler<string>? ErrorOccurred;
@@ -125,6 +130,9 @@ public class BackgroundMonitorService : IDisposable
             _lastCacheCleanup = DateTime.UtcNow; // Initialize cache cleanup timer
             _lastHandledPromptsCleanup = DateTime.UtcNow; // Initialize handled prompts cleanup timer
             _consecutiveTextExtractionFailures = 0;
+            _lastTerminalTextHash = null;
+            _lastTerminalTextLength = 0;
+            _lastConversationBoundary = DateTime.UtcNow;
 
             _logger.LogInfo($"═══════════════════════════════════════");
             _logger.LogInfo($"MONITOR_STARTED");
@@ -258,6 +266,37 @@ public class BackgroundMonitorService : IDisposable
             // Extract terminal text for diagnostics
             var terminalText = _detector.GetTerminalText(claudeSession.TerminalWindowHandle);
             var textLength = terminalText?.Length ?? 0;
+
+            // CONVERSATION BOUNDARY DETECTION
+            // Detect when terminal content changes significantly (indicates new conversation)
+            if (textLength > 0 && terminalText != null)
+            {
+                var conversationBoundaryDetected = DetectConversationBoundary(terminalText, textLength);
+                if (conversationBoundaryDetected)
+                {
+                    _logger.LogInfo("═══════════════════════════════════════");
+                    _logger.LogInfo("CONVERSATION_BOUNDARY_DETECTED");
+                    _logger.LogInfo($"  Reason: Significant terminal content change");
+                    _logger.LogInfo($"  Previous text length: {_lastTerminalTextLength}");
+                    _logger.LogInfo($"  Current text length: {textLength}");
+                    _logger.LogInfo($"  Time since last boundary: {(DateTime.UtcNow - _lastConversationBoundary).TotalSeconds:F1}s");
+                    _logger.LogInfo("  Action: Incrementing context sequence, clearing caches");
+
+                    // Increment context sequence (invalidates old deduplication keys)
+                    _executor.IncrementContextSequence();
+
+                    // Clear UI Automation cache to force fresh element acquisition
+                    _detector.ClearCache(claudeSession.TerminalWindowHandle);
+
+                    // Clear handled prompts to allow re-detection
+                    _executor.ClearHandledPrompts();
+
+                    _lastConversationBoundary = DateTime.UtcNow;
+
+                    _logger.LogInfo($"  New context sequence: {_executor.GetContextSequence()}");
+                    _logger.LogInfo("═══════════════════════════════════════");
+                }
+            }
 
             // Track text extraction failures
             if (textLength == 0)
@@ -509,6 +548,76 @@ public class BackgroundMonitorService : IDisposable
         {
             _logger.LogInfo("═══════════════════════════════════════");
         }
+    }
+
+    /// <summary>
+    /// Detect if terminal content has changed significantly, indicating a conversation boundary
+    /// Returns true if a new conversation has likely started
+    /// </summary>
+    private bool DetectConversationBoundary(string currentText, int currentLength)
+    {
+        // First run - establish baseline
+        if (_lastTerminalTextHash == null)
+        {
+            _lastTerminalTextHash = ComputeTextHash(currentText);
+            _lastTerminalTextLength = currentLength;
+            return false;
+        }
+
+        // Check for significant length changes
+        var lengthChangeRatio = Math.Abs(currentLength - _lastTerminalTextLength) / (double)Math.Max(_lastTerminalTextLength, 1);
+
+        // Significant shrinkage (>30% smaller) - terminal was cleared or scrolled significantly
+        if (currentLength < _lastTerminalTextLength * 0.7)
+        {
+            _lastTerminalTextHash = ComputeTextHash(currentText);
+            _lastTerminalTextLength = currentLength;
+            return true;
+        }
+
+        // Significant growth (>80% larger) - lots of new output (likely new conversation)
+        // But only if at least 5 seconds have passed since last boundary to avoid false positives during active output
+        if (currentLength > _lastTerminalTextLength * 1.8 &&
+            (DateTime.UtcNow - _lastConversationBoundary).TotalSeconds > 5)
+        {
+            _lastTerminalTextHash = ComputeTextHash(currentText);
+            _lastTerminalTextLength = currentLength;
+            return true;
+        }
+
+        // Content hash changed completely (screen was cleared and refilled)
+        var currentHash = ComputeTextHash(currentText);
+        if (currentHash != _lastTerminalTextHash)
+        {
+            // Hash changed - but only treat as boundary if content is substantially different
+            // (to avoid false positives from minor scrolling)
+            if (lengthChangeRatio > 0.3)
+            {
+                _lastTerminalTextHash = currentHash;
+                _lastTerminalTextLength = currentLength;
+                return true;
+            }
+
+            // Update hash but don't treat as boundary (minor change)
+            _lastTerminalTextHash = currentHash;
+            _lastTerminalTextLength = currentLength;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Compute a hash of terminal text for change detection
+    /// Uses first 32 chars for performance (full hash not needed for change detection)
+    /// </summary>
+    private string ComputeTextHash(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return string.Empty;
+
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(text));
+        return Convert.ToHexString(hashBytes).Substring(0, 32).ToLowerInvariant();
     }
 
     private void NotifyStatisticsUpdated()

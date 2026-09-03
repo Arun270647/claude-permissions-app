@@ -19,7 +19,8 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
     private readonly ExecutorConfiguration _config;
     private readonly Dictionary<string, DateTime> _handledPrompts = new();
     private readonly object _lock = new();
-    private static readonly TimeSpan DuplicateCooldown = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DuplicateCooldown = TimeSpan.FromSeconds(1);  // Reduced from 5s to allow new conversations
+    private int _contextSequence = 0;  // Increments when terminal context changes (new conversation detected)
 
     public ClaudePermissionPromptExecutorHardened(
         IClaudePromptDetector detector,
@@ -334,6 +335,7 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
 
     /// <summary>
     /// SECURITY FIX: Use cryptographic hashing instead of GetHashCode() for stable, collision-resistant identity
+    /// CONVERSATION FIX: Include context sequence to differentiate prompts across conversation boundaries
     /// </summary>
     private string GetPromptKey(DetectedPrompt prompt)
     {
@@ -347,7 +349,33 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(textToHash));
         var textHash = Convert.ToHexString(hashBytes).Substring(0, 16).ToLowerInvariant();
 
-        return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{textHash}";
+        // CONVERSATION FIX: Include context sequence number
+        // This allows same prompt text in different conversations to be treated as distinct
+        return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{_contextSequence}_{textHash}";
+    }
+
+    /// <summary>
+    /// Increment context sequence to mark a new conversation boundary
+    /// This invalidates all previous deduplication keys, allowing fresh detection
+    /// </summary>
+    public void IncrementContextSequence()
+    {
+        lock (_lock)
+        {
+            _contextSequence++;
+            _logger.LogInformation("Context sequence incremented to {Sequence} - conversation boundary detected", _contextSequence);
+        }
+    }
+
+    /// <summary>
+    /// Get current context sequence number (for diagnostics)
+    /// </summary>
+    public int GetContextSequence()
+    {
+        lock (_lock)
+        {
+            return _contextSequence;
+        }
     }
 
     private ExecutionResult CreateFailureResult(

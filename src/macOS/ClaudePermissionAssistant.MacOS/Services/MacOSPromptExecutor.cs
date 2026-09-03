@@ -18,7 +18,8 @@ public class MacOSPromptExecutor : IClaudePermissionPromptExecutor
     private readonly ExecutorConfiguration _config;
     private readonly Dictionary<string, DateTime> _handledPrompts = new();
     private readonly object _lock = new();
-    private static readonly TimeSpan DuplicateCooldown = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan DuplicateCooldown = TimeSpan.FromSeconds(1);  // Reduced from 10s to allow new conversations
+    private int _contextSequence = 0;  // Increments when terminal context changes (new conversation detected)
 
     public MacOSPromptExecutor(
         IClaudePromptDetector detector,
@@ -320,6 +321,32 @@ end tell
     }
 
     /// <summary>
+    /// Periodic cleanup of old handled prompts for 24/7 stability
+    /// Removes entries older than 5 minutes to prevent memory bloat
+    /// </summary>
+    public void CleanupOldHandledPrompts()
+    {
+        lock (_lock)
+        {
+            var cutoff = DateTime.UtcNow.AddMinutes(-5);
+            var oldKeys = _handledPrompts
+                .Where(kvp => kvp.Value < cutoff)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var oldKey in oldKeys)
+            {
+                _handledPrompts.Remove(oldKey);
+            }
+
+            if (oldKeys.Count > 0)
+            {
+                _logger.LogDebug("Periodic cleanup: Removed {Count} old prompt entries (24/7 stability)", oldKeys.Count);
+            }
+        }
+    }
+
+    /// <summary>
     /// SECURITY FIX: Use cryptographic hashing instead of GetHashCode() for stable, collision-resistant identity
     /// </summary>
     private string GetPromptKey(DetectedPrompt prompt)
@@ -331,7 +358,33 @@ end tell
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(textToHash));
         var textHash = Convert.ToHexString(hashBytes).Substring(0, 16).ToLowerInvariant();
 
-        return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{textHash}";
+        // CONVERSATION FIX: Include context sequence number
+        // This allows same prompt text in different conversations to be treated as distinct
+        return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{_contextSequence}_{textHash}";
+    }
+
+    /// <summary>
+    /// Increment context sequence to mark a new conversation boundary
+    /// This invalidates all previous deduplication keys, allowing fresh detection
+    /// </summary>
+    public void IncrementContextSequence()
+    {
+        lock (_lock)
+        {
+            _contextSequence++;
+            _logger.LogInformation("Context sequence incremented to {Sequence} - conversation boundary detected", _contextSequence);
+        }
+    }
+
+    /// <summary>
+    /// Get current context sequence number (for diagnostics)
+    /// </summary>
+    public int GetContextSequence()
+    {
+        lock (_lock)
+        {
+            return _contextSequence;
+        }
     }
 
     private ExecutionResult CreateFailureResult(

@@ -16,12 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **False positive keystroke injection** — Tightened prompt parser to require Claude's exact numbered option format (`1. Yes` / `2. No`). Previously, any terminal text containing "Do you want to" with "Yes" and "No" anywhere would trigger false approvals.
 - **Foreground window mismatch with active terminals** — Fixed "Foreground window mismatch" errors when Claude Code runs background agents with rapid terminal output. Now uses exponential backoff (5 attempts, up to 650ms focus delay) and ensures window visibility before focus attempts.
 - **Foreground window reliability** — Added `AttachThreadInput` + `BringWindowToTop` with retry attempts to reliably steal focus from the app's own window when approving prompts.
+- **Conversation boundary detection** — Fixed issue where permissions in a new conversation (p2) would be rejected as duplicates or fail to detect after a previous conversation (p1) completed. Implemented intelligent detection of conversation boundaries based on terminal content changes (>30% shrinkage, >80% growth, or significant content hash change). When detected, clears deduplication cache and increments context sequence number to allow fresh approvals.
+- **Duplicate cooldown reduced** — Decreased cooldown from 5 seconds to 1 second (Windows) and 10 seconds to 1 second (macOS), allowing legitimate approvals in new conversations while still preventing rapid re-detection of the same prompt.
 
 ### Improved
 - **Enhanced retry strategy** — Foreground verification now uses exponential backoff (250ms → 650ms) over 5 attempts instead of fixed delays, providing better handling of rapidly updating terminals
 - **Window restoration** — Added `ShowWindow(SW_RESTORE)` to ensure minimized windows are properly restored before focus attempts
 - **Increased timing delays** — Focus delay 150ms→250ms for better stability with active terminal output
 - **Faster detection** — Polling interval reduced from 500ms to 300ms for quicker prompt detection
+- **Context-aware deduplication** — Added context sequence numbers to deduplication keys, allowing same prompt text in different conversations to be treated as distinct approvals
+- **Terminal content change detection** — Monitors terminal text hash and length changes to intelligently detect when a new conversation starts, clearing stale caches automatically
 
 ## [1.0.1] - 2026-08-27
 
