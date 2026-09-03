@@ -9,6 +9,7 @@ public class ClaudePermissionPromptExecutor : IClaudePermissionPromptExecutor
 {
     private readonly IClaudePromptDetector _detector;
     private readonly HashSet<string> _handledPrompts = new();
+    private int _contextSequence = 0;
     private readonly object _lock = new();
 
     public ClaudePermissionPromptExecutor(IClaudePromptDetector detector)
@@ -159,10 +160,31 @@ public class ClaudePermissionPromptExecutor : IClaudePermissionPromptExecutor
         }
     }
 
+    public void CleanupOldHandledPrompts()
+    {
+        // Not implemented in this executor (used for compatibility only)
+    }
+
+    public void IncrementContextSequence()
+    {
+        lock (_lock)
+        {
+            _contextSequence++;
+        }
+    }
+
+    public int GetContextSequence()
+    {
+        lock (_lock)
+        {
+            return _contextSequence;
+        }
+    }
+
     private string GetPromptKey(DetectedPrompt prompt)
     {
         // Create a unique key based on session and prompt content
-        return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{prompt.DetectedAt.Ticks}";
+        return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{_contextSequence}_{prompt.DetectedAt.Ticks}";
     }
 
     private void SendKeyPress(char key)

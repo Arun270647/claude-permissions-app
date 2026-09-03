@@ -11,4 +11,10 @@ public interface IClaudePermissionPromptExecutor
     void MarkPromptAsHandled(DetectedPrompt prompt);
 
     void ClearHandledPrompts();
+
+    void CleanupOldHandledPrompts();
+
+    void IncrementContextSequence();
+
+    int GetContextSequence();
 }

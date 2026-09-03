@@ -49,6 +49,13 @@ public class ClaudePromptDetector : IClaudePromptDetector
 
     public string? GetTerminalText(IntPtr windowHandle)
     {
+        // SECURITY: Verify window handle is valid before attempting text extraction
+        if (windowHandle == IntPtr.Zero)
+        {
+            System.Diagnostics.Debug.WriteLine("[ClaudePromptDetector] SECURITY: Invalid window handle (Zero)");
+            return null;
+        }
+
         AutomationElement? element = null;
         bool needsRefresh = false;
 

@@ -19,7 +19,8 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
     private readonly ExecutorConfiguration _config;
     private readonly Dictionary<string, DateTime> _handledPrompts = new();
     private readonly object _lock = new();
-    private static readonly TimeSpan DuplicateCooldown = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DuplicateCooldown = TimeSpan.FromSeconds(1);  // Reduced from 5s to allow new conversations
+    private int _contextSequence = 0;  // Increments when terminal context changes (new conversation detected)
 
     public ClaudePermissionPromptExecutorHardened(
         IClaudePromptDetector detector,
@@ -121,8 +122,48 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
                 ExecutionState.Failed);
         }
 
-        // Step 3.1: Bring terminal to foreground with retry
+        // CRITICAL SECURITY: Verify window identity matches the original monitored terminal
+        // This prevents keystroke injection into wrong windows if handle gets reused or confused
+        if (_config.RequireForegroundVerification)
+        {
+            var windowTitle = GetWindowTitle(targetHwnd);
+            var windowProcessId = GetWindowProcessId(targetHwnd);
+
+            // Verify process ID matches what we expect
+            if (windowProcessId != redetected.Session.TerminalProcessId)
+            {
+                _logger.LogError("SECURITY: Window process mismatch! Expected PID {Expected}, got PID {Actual} - ABORTING",
+                    redetected.Session.TerminalProcessId, windowProcessId);
+                _logger.LogError("SECURITY: Window title: '{Title}' - This may indicate handle confusion", windowTitle);
+                return CreateFailureResult(originalPrompt, startTime, optionNumber,
+                    $"Window process mismatch - expected PID {redetected.Session.TerminalProcessId}, got {windowProcessId}. SECURITY ABORT.",
+                    ExecutionState.Failed);
+            }
+
+            // Verify window title hasn't changed to something completely different
+            // (Terminal titles change with directory, but shouldn't become "Backend-refactor" etc)
+            var expectedTerminalIndicators = new[] { "cmd", "powershell", "terminal", "claude", "bash", "sh", "zsh" };
+            var titleLower = windowTitle.ToLowerInvariant();
+            var looksLikeTerminal = expectedTerminalIndicators.Any(indicator => titleLower.Contains(indicator));
+
+            if (!looksLikeTerminal && windowTitle.Length > 0)
+            {
+                _logger.LogError("SECURITY: Window title suspicious! '{Title}' does not look like a terminal - ABORTING", windowTitle);
+                return CreateFailureResult(originalPrompt, startTime, optionNumber,
+                    $"Window title '{windowTitle}' does not match terminal pattern. SECURITY ABORT.",
+                    ExecutionState.Failed);
+            }
+
+            _logger.LogDebug("SECURITY: Window identity verified - PID {Pid}, Title: '{Title}'",
+                windowProcessId, windowTitle);
+        }
+
+        // Step 3.1: Bring terminal to foreground with retry and exponential backoff
         _logger.LogDebug("Bringing terminal to foreground");
+
+        // Ensure window is visible (not minimized) before attempting focus
+        ShowWindow(targetHwnd, SW_RESTORE);
+        Thread.Sleep(50); // Brief pause for window to restore
 
         // Allow our process to set foreground window (overcomes Windows focus-stealing prevention)
         var targetThreadId = GetWindowThreadProcessId(targetHwnd, out _);
@@ -139,21 +180,26 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
         {
             for (int attempt = 0; attempt < _config.ForegroundRetryAttempts; attempt++)
             {
+                // Bring to top first
+                BringWindowToTop(targetHwnd);
+                Thread.Sleep(50);
+
                 if (!SetForegroundWindow(targetHwnd))
                 {
                     _logger.LogWarning("SetForegroundWindow returned false (attempt {Attempt})", attempt + 1);
-                    BringWindowToTop(targetHwnd);
                 }
 
-                Thread.Sleep(_config.FocusDelayMs);
+                // Use exponential backoff: 250ms, 300ms, 400ms, 600ms, 800ms
+                var delayMs = _config.FocusDelayMs + (attempt * 100);
+                Thread.Sleep(delayMs);
 
                 var foregroundHwnd = GetForegroundWindow();
                 foregroundVerified = foregroundHwnd == targetHwnd;
 
                 if (foregroundVerified)
                 {
-                    _logger.LogInformation("Foreground verified: 0x{Hwnd:X} (attempt {Attempt})",
-                        foregroundHwnd.ToInt64(), attempt + 1);
+                    _logger.LogInformation("Foreground verified: 0x{Hwnd:X} (attempt {Attempt}, delay {Delay}ms)",
+                        foregroundHwnd.ToInt64(), attempt + 1, delayMs);
                     break;
                 }
 
@@ -162,7 +208,10 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
 
                 if (attempt < _config.ForegroundRetryAttempts - 1)
                 {
-                    Thread.Sleep(_config.ForegroundRetryDelayMs);
+                    // Exponential backoff for retry delay: 200ms, 300ms, 400ms, 500ms
+                    var retryDelay = _config.ForegroundRetryDelayMs + (attempt * 100);
+                    _logger.LogDebug("Waiting {Delay}ms before retry {NextAttempt}", retryDelay, attempt + 2);
+                    Thread.Sleep(retryDelay);
                 }
             }
         }
@@ -322,6 +371,7 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
 
     /// <summary>
     /// SECURITY FIX: Use cryptographic hashing instead of GetHashCode() for stable, collision-resistant identity
+    /// CONVERSATION FIX: Include context sequence to differentiate prompts across conversation boundaries
     /// </summary>
     private string GetPromptKey(DetectedPrompt prompt)
     {
@@ -335,7 +385,33 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(textToHash));
         var textHash = Convert.ToHexString(hashBytes).Substring(0, 16).ToLowerInvariant();
 
-        return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{textHash}";
+        // CONVERSATION FIX: Include context sequence number
+        // This allows same prompt text in different conversations to be treated as distinct
+        return $"{prompt.Session.TerminalProcessId}_{prompt.Session.ClaudeProcessId}_{_contextSequence}_{textHash}";
+    }
+
+    /// <summary>
+    /// Increment context sequence to mark a new conversation boundary
+    /// This invalidates all previous deduplication keys, allowing fresh detection
+    /// </summary>
+    public void IncrementContextSequence()
+    {
+        lock (_lock)
+        {
+            _contextSequence++;
+            _logger.LogInformation("Context sequence incremented to {Sequence} - conversation boundary detected", _contextSequence);
+        }
+    }
+
+    /// <summary>
+    /// Get current context sequence number (for diagnostics)
+    /// </summary>
+    public int GetContextSequence()
+    {
+        lock (_lock)
+        {
+            return _contextSequence;
+        }
     }
 
     private ExecutionResult CreateFailureResult(
@@ -359,6 +435,20 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
             ForegroundVerified = false,
             RetryCount = 0
         };
+    }
+
+    private string GetWindowTitle(IntPtr hWnd)
+    {
+        const int maxLength = 256;
+        var sb = new StringBuilder(maxLength);
+        GetWindowText(hWnd, sb, maxLength);
+        return sb.ToString();
+    }
+
+    private uint GetWindowProcessId(IntPtr hWnd)
+    {
+        GetWindowThreadProcessId(hWnd, out uint processId);
+        return processId;
     }
 
     private void SendKeyPress(char key)
@@ -426,12 +516,19 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
     [DllImport("kernel32.dll")]
     private static extern uint GetCurrentThreadId();
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
     [DllImport("user32.dll")]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     private const int INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_UNICODE = 0x0004;
     private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const int SW_RESTORE = 9;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct INPUT
