@@ -1,15 +1,18 @@
+using System.Runtime.InteropServices;
 using System.Windows.Automation;
 using ClaudePermissionAssistant.Core.Interfaces;
 using ClaudePermissionAssistant.Core.Models;
 
 namespace ClaudePermissionAssistant.Automation.Services;
 
-public class ClaudePromptDetector : IClaudePromptDetector
+public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
 {
     private readonly IClaudePromptParser _parser;
     private readonly object _cacheLock = new();
     private readonly Dictionary<IntPtr, CachedAutomationElement> _elementCache = new();
-    private const int MaxCacheAgeSeconds = 30; // Refresh cache every 30 seconds
+    private const int MaxCacheAgeSeconds = 15; // PHASE 1 FIX: Reduced from 30s for faster refresh
+    private const int MaxCacheSize = 10; // PHASE 1 FIX: Bounded cache to prevent unbounded growth
+    private bool _disposed = false;
 
     public ClaudePromptDetector(IClaudePromptParser parser)
     {
@@ -56,6 +59,21 @@ public class ClaudePromptDetector : IClaudePromptDetector
             return null;
         }
 
+        // PHASE 1 FIX: Validate window still exists and is visible
+        if (!IsWindowStillValid(windowHandle))
+        {
+            System.Diagnostics.Debug.WriteLine($"[ClaudePromptDetector] Window 0x{windowHandle.ToInt64():X} is no longer valid - clearing cache");
+            lock (_cacheLock)
+            {
+                if (_elementCache.TryGetValue(windowHandle, out var stale))
+                {
+                    stale.Element = null;  // Release COM reference
+                }
+                _elementCache.Remove(windowHandle);
+            }
+            return null;
+        }
+
         AutomationElement? element = null;
         bool needsRefresh = false;
 
@@ -69,6 +87,8 @@ public class ClaudePromptDetector : IClaudePromptDetector
                 if (age > MaxCacheAgeSeconds || cached.ConsecutiveFailures >= 3)
                 {
                     needsRefresh = true;
+                    // Nullify old element before refresh
+                    cached.Element = null;
                 }
                 else
                 {
@@ -196,21 +216,50 @@ public class ClaudePromptDetector : IClaudePromptDetector
     }
 
     /// <summary>
-    /// Remove stale cache entries (> 5 minutes old) to prevent memory bloat
+    /// PHASE 1 FIX: Aggressive cache cleanup with LRU eviction
+    /// Remove stale cache entries (> 2 minutes old) and enforce bounded size
     /// </summary>
     public void CleanupStaleCache()
     {
         lock (_cacheLock)
         {
-            var staleThreshold = DateTime.UtcNow.AddMinutes(-5);
+            // PHASE 1 FIX: More aggressive stale threshold (2 minutes instead of 5)
+            var staleThreshold = DateTime.UtcNow.AddMinutes(-2);
             var staleKeys = _elementCache
                 .Where(kvp => kvp.Value.CachedAt < staleThreshold)
                 .Select(kvp => kvp.Key)
                 .ToList();
 
+            // Nullify elements before removing to release COM references
             foreach (var key in staleKeys)
             {
+                if (_elementCache.TryGetValue(key, out var cached))
+                {
+                    cached.Element = null;
+                }
                 _elementCache.Remove(key);
+            }
+
+            // PHASE 1 FIX: LRU eviction if cache exceeds max size
+            if (_elementCache.Count > MaxCacheSize)
+            {
+                var excessCount = _elementCache.Count - MaxCacheSize;
+                var oldestKeys = _elementCache
+                    .OrderBy(kvp => kvp.Value.CachedAt)
+                    .Take(excessCount)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+
+                foreach (var key in oldestKeys)
+                {
+                    if (_elementCache.TryGetValue(key, out var cached))
+                    {
+                        cached.Element = null;
+                    }
+                    _elementCache.Remove(key);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[ClaudePromptDetector] LRU evicted {excessCount} oldest entries (cache limit: {MaxCacheSize})");
             }
 
             if (staleKeys.Count > 0)
@@ -341,4 +390,57 @@ public class ClaudePromptDetector : IClaudePromptDetector
             return false;
         }
     }
+
+    /// <summary>
+    /// PHASE 1 FIX: Validate window handle before use
+    /// </summary>
+    private bool IsWindowStillValid(IntPtr windowHandle)
+    {
+        if (windowHandle == IntPtr.Zero)
+            return false;
+
+        if (!IsWindow(windowHandle))
+            return false;
+
+        if (!IsWindowVisible(windowHandle))
+            return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// PHASE 1 FIX: Dispose pattern to release COM objects
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        lock (_cacheLock)
+        {
+            // Nullify all AutomationElement references to release COM objects
+            foreach (var cached in _elementCache.Values)
+            {
+                cached.Element = null;
+            }
+            _elementCache.Clear();
+        }
+
+        // Force garbage collection to release COM objects immediately
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        _disposed = true;
+    }
+
+    #region Windows API for Window Validation
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    #endregion
 }

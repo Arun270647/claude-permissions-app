@@ -132,7 +132,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Version (Bottom Left) -->
-            <TextBlock Grid.Column="0" Text="v1.0.0"
+            <TextBlock Name="VersionTextBlock" Grid.Column="0"
                        FontSize="11" Foreground="Gray"
                        VerticalAlignment="Center"/>
 

@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New `ClaudeTerminal` terminal type** — Properly identifies and auto-verifies Claude's native window
 
 ### Fixed
+- **🔴 CRITICAL: Multi-terminal long-running stability** — **PHASE 1 RESOURCE CLEANUP FIX**: Fixed degraded detection rates (100% → 30-50%) after 8+ hours with multiple terminals. Root cause: UI Automation COM objects accumulated without disposal, causing 4,800+ leaked objects over 8 hours.
+  - **Implemented IDisposable pattern**: ClaudePromptDetector now properly releases AutomationElement COM references on cleanup
+  - **Bounded LRU cache**: Maximum 10 cached elements per detector, oldest entries evicted when limit exceeded
+  - **Aggressive cleanup intervals**: Cache cleanup 5min→1min, handled prompts cleanup 10min→2min
+  - **Faster cache refresh**: Cache TTL reduced from 30s to 15s for fresher element acquisition
+  - **Stale threshold reduced**: 5min→2min for aggressive removal of old COM references
+  - **Window validation**: Added IsWindow/IsWindowVisible checks before AutomationElement usage
+  - **Enhanced recovery**: Recovery now includes detector cleanup, GC.Collect(), and conversation boundary reset
+  - **Disposal chain**: BackgroundMonitorService now properly disposes detector on stop/dispose
+  - **Expected impact**: Detection rate should remain 95%+ after 24 hours continuous operation
 - **🔴 CRITICAL: Keystroke injection leak into wrong windows** — **SECURITY FIX**: The app was injecting keystrokes into windows other than the monitored terminal (observed sending "1 2 3" to "Backend-refactor progress report" window). Added multi-layer verification: (1) Window process ID must match monitored terminal PID, (2) Window title must contain terminal indicators (cmd/powershell/terminal/claude/bash/sh/zsh), (3) Comprehensive logging of target window identity. This prevents keystrokes from leaking into arbitrary applications if window handles get confused or reused.
 - **Pre-existing prompts now get approved** — Previously, if you opened the app after a prompt was already on screen, it would fail to approve it (foreground steal failed, then prompt was incorrectly marked as "handled" and never retried). Now only successful executions are marked as handled.
 - **False positive keystroke injection** — Tightened prompt parser to require Claude's exact numbered option format (`1. Yes` / `2. No`). Previously, any terminal text containing "Do you want to" with "Yes" and "No" anywhere would trigger false approvals.

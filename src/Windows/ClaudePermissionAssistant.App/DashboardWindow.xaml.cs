@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using ClaudePermissionAssistant.App.Models;
@@ -24,6 +26,10 @@ public partial class DashboardWindow : Window
 
         TerminalListBox.ItemsSource = _monitoredTerminals;
         UpdateEmptyState();
+
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+        VersionTextBlock.Text = $"v{version?.Major}.{version?.Minor}.{version?.Build}";
+
     }
 
     private void AddTerminalButton_Click(object sender, RoutedEventArgs e)
@@ -83,6 +89,10 @@ public partial class DashboardWindow : Window
             _monitoredTerminals.Add(entry);
             UpdateEmptyState();
             UpdateAggregateStatistics();
+
+            // Give focus back to the terminal so existing prompts can be approved immediately
+            SetForegroundWindow(terminal.WindowInfo.WindowHandle);
+            this.WindowState = WindowState.Minimized;
         }
     }
 
@@ -174,6 +184,9 @@ public partial class DashboardWindow : Window
         }
         _monitoredTerminals.Clear();
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 }
 
 public class MonitoredTerminalEntry
