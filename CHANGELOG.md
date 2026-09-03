@@ -5,9 +5,11 @@ All notable changes to Claude Permission Assistant will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.2] - 2026-08-27
+## [Unreleased]
 
 ### Added
+- **Automatic versioning system** — Website and app versions now sync automatically on every release. Push to main triggers version bump, builds, release creation, and website update in one workflow.
+- **Integrated website** — Marketing website moved into main repo under `website/` directory for unified management and automatic deployment.
 - **Claude direct terminal support** — The app now recognizes Claude Code's own terminal window (opened via desktop app or Start Menu), not just CMD/PowerShell/Windows Terminal
 - **New `ClaudeTerminal` terminal type** — Properly identifies and auto-verifies Claude's native window
 
@@ -27,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Faster detection** — Polling interval reduced from 500ms to 300ms for quicker prompt detection
 - **Context-aware deduplication** — Added context sequence numbers to deduplication keys, allowing same prompt text in different conversations to be treated as distinct approvals
 - **Terminal content change detection** — Monitors terminal text hash and length changes to intelligently detect when a new conversation starts, clearing stale caches automatically
+
+## [1.0.2] - 2026-08-27
+
+### Fixed
+- **Documentation updates** — Various README and documentation improvements
 
 ## [1.0.1] - 2026-08-27
 
