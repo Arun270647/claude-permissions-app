@@ -54,20 +54,20 @@ public class BackgroundMonitorService : IDisposable
 
         var executorConfig = new ExecutorConfiguration
         {
-            FocusDelayMs = 200,
-            KeyPressDelayMs = 100,
-            VerificationDelayMs = 500,
+            FocusDelayMs = 250,              // Increased from 150ms for better stability
+            KeyPressDelayMs = 80,
+            VerificationDelayMs = 300,
             MaxRetryAttempts = 3,
-            RetryDelayMs = 500,
+            RetryDelayMs = 300,
             RequireForegroundVerification = true,
-            ForegroundRetryAttempts = 3,
-            ForegroundRetryDelayMs = 150
+            ForegroundRetryAttempts = 5,     // Increased from 3 for active terminals
+            ForegroundRetryDelayMs = 200     // Increased from 100ms for exponential backoff
         };
 
         _executor = new ClaudePermissionPromptExecutorHardened(_detector, executorLogger, executorConfig);
 
-        // Polling interval: 500ms
-        _monitorTimer = new System.Timers.Timer(500);
+        // Polling interval: 300ms for faster detection
+        _monitorTimer = new System.Timers.Timer(300);
         _monitorTimer.Elapsed += MonitorTimer_Elapsed;
         _monitorTimer.AutoReset = true;
     }

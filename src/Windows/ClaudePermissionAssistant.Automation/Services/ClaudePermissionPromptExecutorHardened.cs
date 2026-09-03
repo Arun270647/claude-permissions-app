@@ -121,8 +121,12 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
                 ExecutionState.Failed);
         }
 
-        // Step 3.1: Bring terminal to foreground with retry
+        // Step 3.1: Bring terminal to foreground with retry and exponential backoff
         _logger.LogDebug("Bringing terminal to foreground");
+
+        // Ensure window is visible (not minimized) before attempting focus
+        ShowWindow(targetHwnd, SW_RESTORE);
+        Thread.Sleep(50); // Brief pause for window to restore
 
         // Allow our process to set foreground window (overcomes Windows focus-stealing prevention)
         var targetThreadId = GetWindowThreadProcessId(targetHwnd, out _);
@@ -139,21 +143,26 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
         {
             for (int attempt = 0; attempt < _config.ForegroundRetryAttempts; attempt++)
             {
+                // Bring to top first
+                BringWindowToTop(targetHwnd);
+                Thread.Sleep(50);
+
                 if (!SetForegroundWindow(targetHwnd))
                 {
                     _logger.LogWarning("SetForegroundWindow returned false (attempt {Attempt})", attempt + 1);
-                    BringWindowToTop(targetHwnd);
                 }
 
-                Thread.Sleep(_config.FocusDelayMs);
+                // Use exponential backoff: 250ms, 300ms, 400ms, 600ms, 800ms
+                var delayMs = _config.FocusDelayMs + (attempt * 100);
+                Thread.Sleep(delayMs);
 
                 var foregroundHwnd = GetForegroundWindow();
                 foregroundVerified = foregroundHwnd == targetHwnd;
 
                 if (foregroundVerified)
                 {
-                    _logger.LogInformation("Foreground verified: 0x{Hwnd:X} (attempt {Attempt})",
-                        foregroundHwnd.ToInt64(), attempt + 1);
+                    _logger.LogInformation("Foreground verified: 0x{Hwnd:X} (attempt {Attempt}, delay {Delay}ms)",
+                        foregroundHwnd.ToInt64(), attempt + 1, delayMs);
                     break;
                 }
 
@@ -162,7 +171,10 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
 
                 if (attempt < _config.ForegroundRetryAttempts - 1)
                 {
-                    Thread.Sleep(_config.ForegroundRetryDelayMs);
+                    // Exponential backoff for retry delay: 200ms, 300ms, 400ms, 500ms
+                    var retryDelay = _config.ForegroundRetryDelayMs + (attempt * 100);
+                    _logger.LogDebug("Waiting {Delay}ms before retry {NextAttempt}", retryDelay, attempt + 2);
+                    Thread.Sleep(retryDelay);
                 }
             }
         }
@@ -429,9 +441,13 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
     [DllImport("user32.dll")]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
     private const int INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_UNICODE = 0x0004;
     private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const int SW_RESTORE = 9;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct INPUT

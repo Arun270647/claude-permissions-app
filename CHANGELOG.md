@@ -14,11 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Pre-existing prompts now get approved** — Previously, if you opened the app after a prompt was already on screen, it would fail to approve it (foreground steal failed, then prompt was incorrectly marked as "handled" and never retried). Now only successful executions are marked as handled.
 - **False positive keystroke injection** — Tightened prompt parser to require Claude's exact numbered option format (`1. Yes` / `2. No`). Previously, any terminal text containing "Do you want to" with "Yes" and "No" anywhere would trigger false approvals.
-- **Foreground window reliability** — Added `AttachThreadInput` + `BringWindowToTop` with 3 retry attempts to reliably steal focus from the app's own window when approving prompts.
+- **Foreground window mismatch with active terminals** — Fixed "Foreground window mismatch" errors when Claude Code runs background agents with rapid terminal output. Now uses exponential backoff (5 attempts, up to 650ms focus delay) and ensures window visibility before focus attempts.
+- **Foreground window reliability** — Added `AttachThreadInput` + `BringWindowToTop` with retry attempts to reliably steal focus from the app's own window when approving prompts.
 
 ### Improved
-- **Increased timing delays** — Focus delay 100ms→200ms, key press delay 50ms→100ms, verification delay 300ms→500ms for more reliable keystroke delivery
-- **Retry logic** — Foreground verification now retries 3 times before failing, instead of giving up immediately
+- **Enhanced retry strategy** — Foreground verification now uses exponential backoff (250ms → 650ms) over 5 attempts instead of fixed delays, providing better handling of rapidly updating terminals
+- **Window restoration** — Added `ShowWindow(SW_RESTORE)` to ensure minimized windows are properly restored before focus attempts
+- **Increased timing delays** — Focus delay 150ms→250ms for better stability with active terminal output
+- **Faster detection** — Polling interval reduced from 500ms to 300ms for quicker prompt detection
 
 ## [1.0.1] - 2026-08-27
 
