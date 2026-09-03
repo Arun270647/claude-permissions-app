@@ -200,7 +200,53 @@ public class MonitoredTerminalEntry
     public string Details =>
         $"PID: {Terminal.WindowInfo.ProcessId} | {Terminal.WindowInfo.WindowTitle}";
 
-    public Brush StatusColor => MonitorService.IsRunning
-        ? Brushes.Green
-        : Brushes.Gray;
+    // PHASE 2/3: Health status display
+    public Brush StatusColor
+    {
+        get
+        {
+            if (!MonitorService.IsRunning)
+                return Brushes.Gray;
+
+            var health = MonitorService.HealthMetrics.HealthStatus;
+            return health switch
+            {
+                TerminalHealthStatus.Healthy => Brushes.LimeGreen,
+                TerminalHealthStatus.Warning => Brushes.Orange,
+                TerminalHealthStatus.Degraded => Brushes.OrangeRed,
+                TerminalHealthStatus.Critical => Brushes.Red,
+                _ => Brushes.Gray
+            };
+        }
+    }
+
+    // PHASE 2/3: Detailed health info
+    public string HealthInfo
+    {
+        get
+        {
+            if (!MonitorService.IsRunning)
+                return "Stopped";
+
+            var metrics = MonitorService.HealthMetrics;
+            return $"{metrics.HealthStatus} | Detection: {metrics.DetectionSuccessRate:F1}% | " +
+                   $"Approval: {metrics.ApprovalSuccessRate:F1}% | Cache: {metrics.CacheHitRate:F1}%";
+        }
+    }
+
+    // PHASE 3: Detailed diagnostics
+    public string DiagnosticsInfo
+    {
+        get
+        {
+            if (!MonitorService.IsRunning)
+                return "";
+
+            var metrics = MonitorService.HealthMetrics;
+            return $"Extractions: {metrics.SuccessfulTextExtractions}/{metrics.TotalTextExtractionAttempts} | " +
+                   $"Cache Size: {metrics.CurrentCacheSize} | " +
+                   $"Recoveries: {metrics.RecoveryTriggersTotal} | " +
+                   $"Uptime: {metrics.TotalMonitoringTime:hh\\:mm\\:ss}";
+        }
+    }
 }

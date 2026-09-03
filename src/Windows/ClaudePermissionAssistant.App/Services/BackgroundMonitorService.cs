@@ -19,6 +19,8 @@ public class BackgroundMonitorService : IDisposable
     private readonly ClaudePermissionPromptExecutorHardened _executor;
     private readonly FileLoggingService _logger;
     private readonly ApprovalStatistics _statistics;
+    private readonly TerminalHealthMetrics _healthMetrics;  // PHASE 2/3: Health metrics
+    private readonly TerminalHealthMonitor _healthMonitor;   // PHASE 2/3: Health monitor
     private readonly System.Timers.Timer _monitorTimer;
     private readonly object _lock = new();
 
@@ -49,10 +51,26 @@ public class BackgroundMonitorService : IDisposable
     {
         _logger = logger;
         _statistics = statistics;
+        _healthMetrics = new TerminalHealthMetrics();  // PHASE 2/3: Initialize metrics
+        _healthMonitor = new TerminalHealthMonitor(logger, _healthMetrics);  // PHASE 2/3: Initialize monitor
 
         // Use proven automation components
         var parser = new ClaudePromptParserSimple();
         _detector = new ClaudePromptDetector(parser);
+
+        // PHASE 2/3: Wire up detector metrics callbacks to health monitor
+        _detector.OnTextExtraction = success =>
+        {
+            if (success)
+                _healthMonitor.RecordSuccessfulExtraction();
+            else
+                _healthMonitor.RecordFailedExtraction();
+        };
+        _detector.OnCacheHit = () => _healthMonitor.RecordCacheHit();
+        _detector.OnCacheMiss = () => _healthMonitor.RecordCacheMiss();
+        _detector.OnCacheCleanup = (removed, size) => _healthMonitor.RecordCacheCleanup(removed, size);
+        _detector.OnCacheSizeChanged = size => _healthMonitor.UpdateCacheSize(size);
+        _detector.OnWindowValidationFailure = () => _healthMonitor.RecordWindowValidationFailure();
 
         var executorLogger = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information))
             .CreateLogger<ClaudePermissionPromptExecutorHardened>();
@@ -98,6 +116,9 @@ public class BackgroundMonitorService : IDisposable
             }
         }
     }
+
+    // PHASE 2/3: Expose health metrics for UI display
+    public TerminalHealthMetrics HealthMetrics => _healthMetrics;
 
     /// <summary>
     /// Start continuous monitoring of the specified terminal
@@ -245,6 +266,16 @@ public class BackgroundMonitorService : IDisposable
                 {
                     _logger.LogInfo("MONITOR_HANDLED_PROMPTS_CLEANUP: Periodic cleanup completed (24/7 stability)");
                 }
+            }
+
+            // PHASE 2: Health monitoring and auto-recovery
+            // Check health every 30 seconds and trigger recovery if needed
+            if (_healthMonitor.CheckHealthAndShouldRecover(session.Terminal.WindowInfo.WindowHandle))
+            {
+                _logger.LogInfo("PHASE2_AUTO_RECOVERY: Health check triggered recovery");
+                TriggerRecovery(session.Terminal.WindowInfo.WindowHandle);
+                _healthMonitor.RecordRecovery();
+                return; // Skip this cycle, let recovery take effect
             }
 
             // Check if terminal still exists

@@ -14,6 +14,14 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
     private const int MaxCacheSize = 10; // PHASE 1 FIX: Bounded cache to prevent unbounded growth
     private bool _disposed = false;
 
+    // PHASE 2 & 3: Metrics reporting callbacks
+    public Action<bool>? OnTextExtraction { get; set; } // true = success, false = failure
+    public Action? OnCacheHit { get; set; }
+    public Action? OnCacheMiss { get; set; }
+    public Action<int, int>? OnCacheCleanup { get; set; } // elementsRemoved, currentSize
+    public Action<int>? OnCacheSizeChanged { get; set; }
+    public Action? OnWindowValidationFailure { get; set; }
+
     public ClaudePromptDetector(IClaudePromptParser parser)
     {
         _parser = parser;
@@ -63,6 +71,7 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
         if (!IsWindowStillValid(windowHandle))
         {
             System.Diagnostics.Debug.WriteLine($"[ClaudePromptDetector] Window 0x{windowHandle.ToInt64():X} is no longer valid - clearing cache");
+            OnWindowValidationFailure?.Invoke(); // PHASE 2/3: Report validation failure
             lock (_cacheLock)
             {
                 if (_elementCache.TryGetValue(windowHandle, out var stale))
@@ -70,7 +79,9 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
                     stale.Element = null;  // Release COM reference
                 }
                 _elementCache.Remove(windowHandle);
+                OnCacheSizeChanged?.Invoke(_elementCache.Count); // PHASE 2/3: Report cache size
             }
+            OnTextExtraction?.Invoke(false); // PHASE 2/3: Report failed extraction
             return null;
         }
 
@@ -89,15 +100,18 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
                     needsRefresh = true;
                     // Nullify old element before refresh
                     cached.Element = null;
+                    OnCacheMiss?.Invoke(); // PHASE 2/3: Cache expired = miss
                 }
                 else
                 {
                     element = cached.Element;
+                    OnCacheHit?.Invoke(); // PHASE 2/3: Cache hit
                 }
             }
             else
             {
                 needsRefresh = true;
+                OnCacheMiss?.Invoke(); // PHASE 2/3: Not in cache = miss
             }
         }
 
@@ -116,6 +130,7 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
                         CachedAt = DateTime.UtcNow,
                         ConsecutiveFailures = 0
                     };
+                    OnCacheSizeChanged?.Invoke(_elementCache.Count); // PHASE 2/3: Report size
                 }
             }
             catch (Exception ex)
@@ -129,6 +144,7 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
                         cached.ConsecutiveFailures++;
                     }
                 }
+                OnTextExtraction?.Invoke(false); // PHASE 2/3: Failed to acquire element
                 return null;
             }
         }
@@ -142,6 +158,7 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
             if (!string.IsNullOrWhiteSpace(text))
             {
                 ResetFailureCount(windowHandle);
+                OnTextExtraction?.Invoke(true); // PHASE 2/3: Successful extraction
                 return text;
             }
 
@@ -149,6 +166,7 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
             if (!string.IsNullOrWhiteSpace(text))
             {
                 ResetFailureCount(windowHandle);
+                OnTextExtraction?.Invoke(true); // PHASE 2/3: Successful extraction
                 return text;
             }
 
@@ -156,17 +174,20 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
             if (!string.IsNullOrWhiteSpace(text))
             {
                 ResetFailureCount(windowHandle);
+                OnTextExtraction?.Invoke(true); // PHASE 2/3: Successful extraction
                 return text;
             }
 
             // All methods returned null/empty - increment failure count
             IncrementFailureCount(windowHandle);
+            OnTextExtraction?.Invoke(false); // PHASE 2/3: Failed extraction
             return text;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ClaudePromptDetector] Text extraction failed: {ex.GetType().Name}: {ex.Message}");
             IncrementFailureCount(windowHandle);
+            OnTextExtraction?.Invoke(false); // PHASE 2/3: Failed extraction
             return null;
         }
     }
@@ -221,6 +242,8 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
     /// </summary>
     public void CleanupStaleCache()
     {
+        int totalRemoved = 0;
+
         lock (_cacheLock)
         {
             // PHASE 1 FIX: More aggressive stale threshold (2 minutes instead of 5)
@@ -238,6 +261,7 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
                     cached.Element = null;
                 }
                 _elementCache.Remove(key);
+                totalRemoved++;
             }
 
             // PHASE 1 FIX: LRU eviction if cache exceeds max size
@@ -257,15 +281,23 @@ public class ClaudePromptDetector : IClaudePromptDetector, IDisposable
                         cached.Element = null;
                     }
                     _elementCache.Remove(key);
+                    totalRemoved++;
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[ClaudePromptDetector] LRU evicted {excessCount} oldest entries (cache limit: {MaxCacheSize})");
             }
 
-            if (staleKeys.Count > 0)
+            if (totalRemoved > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"[ClaudePromptDetector] Cleaned up {staleKeys.Count} stale cache entries");
+                System.Diagnostics.Debug.WriteLine($"[ClaudePromptDetector] Cleaned up {totalRemoved} cache entries");
             }
+
+            // PHASE 2/3: Report cleanup metrics
+            if (totalRemoved > 0)
+            {
+                OnCacheCleanup?.Invoke(totalRemoved, _elementCache.Count);
+            }
+            OnCacheSizeChanged?.Invoke(_elementCache.Count);
         }
     }
 
