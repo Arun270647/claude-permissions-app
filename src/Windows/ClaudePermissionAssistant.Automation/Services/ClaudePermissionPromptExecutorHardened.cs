@@ -122,6 +122,42 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
                 ExecutionState.Failed);
         }
 
+        // CRITICAL SECURITY: Verify window identity matches the original monitored terminal
+        // This prevents keystroke injection into wrong windows if handle gets reused or confused
+        if (_config.RequireForegroundVerification)
+        {
+            var windowTitle = GetWindowTitle(targetHwnd);
+            var windowProcessId = GetWindowProcessId(targetHwnd);
+
+            // Verify process ID matches what we expect
+            if (windowProcessId != redetected.Session.TerminalProcessId)
+            {
+                _logger.LogError("SECURITY: Window process mismatch! Expected PID {Expected}, got PID {Actual} - ABORTING",
+                    redetected.Session.TerminalProcessId, windowProcessId);
+                _logger.LogError("SECURITY: Window title: '{Title}' - This may indicate handle confusion", windowTitle);
+                return CreateFailureResult(originalPrompt, startTime, optionNumber,
+                    $"Window process mismatch - expected PID {redetected.Session.TerminalProcessId}, got {windowProcessId}. SECURITY ABORT.",
+                    ExecutionState.Failed);
+            }
+
+            // Verify window title hasn't changed to something completely different
+            // (Terminal titles change with directory, but shouldn't become "Backend-refactor" etc)
+            var expectedTerminalIndicators = new[] { "cmd", "powershell", "terminal", "claude", "bash", "sh", "zsh" };
+            var titleLower = windowTitle.ToLowerInvariant();
+            var looksLikeTerminal = expectedTerminalIndicators.Any(indicator => titleLower.Contains(indicator));
+
+            if (!looksLikeTerminal && windowTitle.Length > 0)
+            {
+                _logger.LogError("SECURITY: Window title suspicious! '{Title}' does not look like a terminal - ABORTING", windowTitle);
+                return CreateFailureResult(originalPrompt, startTime, optionNumber,
+                    $"Window title '{windowTitle}' does not match terminal pattern. SECURITY ABORT.",
+                    ExecutionState.Failed);
+            }
+
+            _logger.LogDebug("SECURITY: Window identity verified - PID {Pid}, Title: '{Title}'",
+                windowProcessId, windowTitle);
+        }
+
         // Step 3.1: Bring terminal to foreground with retry and exponential backoff
         _logger.LogDebug("Bringing terminal to foreground");
 
@@ -401,6 +437,20 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
         };
     }
 
+    private string GetWindowTitle(IntPtr hWnd)
+    {
+        const int maxLength = 256;
+        var sb = new StringBuilder(maxLength);
+        GetWindowText(hWnd, sb, maxLength);
+        return sb.ToString();
+    }
+
+    private uint GetWindowProcessId(IntPtr hWnd)
+    {
+        GetWindowThreadProcessId(hWnd, out uint processId);
+        return processId;
+    }
+
     private void SendKeyPress(char key)
     {
         var inputs = new INPUT[2];
@@ -465,6 +515,9 @@ public class ClaudePermissionPromptExecutorHardened : IClaudePermissionPromptExe
 
     [DllImport("kernel32.dll")]
     private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
     [DllImport("user32.dll")]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);

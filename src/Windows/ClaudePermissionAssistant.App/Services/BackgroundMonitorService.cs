@@ -264,8 +264,22 @@ public class BackgroundMonitorService : IDisposable
             }
 
             // Extract terminal text for diagnostics
+            // SECURITY: Log window handle being monitored
+            if (shouldLogDiagnostics)
+            {
+                _logger.LogInfo($"MONITOR_TEXT_EXTRACTION_START: HWND=0x{claudeSession.TerminalWindowHandle:X}, PID={claudeSession.TerminalProcessId}");
+            }
+
             var terminalText = _detector.GetTerminalText(claudeSession.TerminalWindowHandle);
             var textLength = terminalText?.Length ?? 0;
+
+            // SECURITY: Log first 200 chars of extracted text to verify it's from the right window
+            if (shouldLogDiagnostics && textLength > 0 && terminalText != null)
+            {
+                var preview = terminalText.Length > 200 ? terminalText.Substring(0, 200) : terminalText;
+                preview = preview.Replace("\r", "").Replace("\n", " ");
+                _logger.LogInfo($"MONITOR_TEXT_PREVIEW: '{preview}...'");
+            }
 
             // CONVERSATION BOUNDARY DETECTION
             // Detect when terminal content changes significantly (indicates new conversation)
