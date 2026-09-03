@@ -1,9 +1,9 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "releaseDate": "2026-09-03",
   "downloadUrls": {
-    "windows": "https://github.com/Arun270647/claude-permissions-app/releases/latest/download/ClaudePrompter-Windows.exe",
-    "macArm64": "https://github.com/Arun270647/claude-permissions-app/releases/latest/download/ClaudePrompter-macOS-arm64.dmg",
-    "macX64": "https://github.com/Arun270647/claude-permissions-app/releases/latest/download/ClaudePrompter-macOS-x64.dmg"
+    "windows": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.3/ClaudePrompter-Windows-v1.0.3.exe",
+    "macArm64": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.3/ClaudePrompter-macOS-arm64-v1.0.3.dmg",
+    "macX64": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.3/ClaudePrompter-macOS-x64-v1.0.3.dmg"
   }
 }

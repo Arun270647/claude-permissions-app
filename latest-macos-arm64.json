@@ -1,9 +1,9 @@
 {
-  "version": "1.0.2",
-  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.2/ClaudePrompter-macOS-arm64-v1.0.2.dmg",
-  "checksum": "273d1f1976ebae1ea7651e9d1eefd82a04f2eb7b51c9a03220c262a82244106e",
-  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.2",
-  "patchNotes": "\n### Added\n- **Claude direct terminal support** — The app now recognizes Claude Code's own terminal window (opened via desktop app or Start Menu), not just CMD/PowerShell/Windows Terminal\n- **New `ClaudeTerminal` terminal type** — Properly identifies and auto-verifies Claude's native window\n\n### Fixed\n- **Pre-existing prompts now get approved** — Previously, if you opened the app after a prompt was already on screen, it would fail to approve it (foreground steal failed, then prompt was inc",
-  "publishedAt": "2026-08-27T13:10:57Z",
+  "version": "1.0.3",
+  "url": "https://github.com/Arun270647/claude-permissions-app/releases/download/v1.0.3/ClaudePrompter-macOS-arm64-v1.0.3.dmg",
+  "checksum": "75ba433baf691c32f42faebf8b6bf4a73083ef9b87826a14ff34369cc58e487c",
+  "changelog": "See release notes at https://github.com/Arun270647/claude-permissions-app/releases/tag/v1.0.3",
+  "patchNotes": "\n### Added\n- **Automatic versioning system** — Website and app versions now sync automatically on every release. Push to main triggers version bump, builds, release creation, and website update in one workflow.\n- **Integrated website** — Marketing website moved into main repo under `website/` directory for unified management and automatic deployment.\n- **Claude direct terminal support** — The app now recognizes Claude Code's own terminal window (opened via desktop app or Start Menu), not j",
+  "publishedAt": "2026-09-03T06:39:55Z",
   "mandatory": false
 }
