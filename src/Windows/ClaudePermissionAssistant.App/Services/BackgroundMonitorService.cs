@@ -19,6 +19,8 @@ public class BackgroundMonitorService : IDisposable
     private readonly ClaudePermissionPromptExecutorHardened _executor;
     private readonly FileLoggingService _logger;
     private readonly ApprovalStatistics _statistics;
+    private readonly TerminalHealthMetrics _healthMetrics;  // PHASE 2/3: Health metrics
+    private readonly TerminalHealthMonitor _healthMonitor;   // PHASE 2/3: Health monitor
     private readonly System.Timers.Timer _monitorTimer;
     private readonly object _lock = new();
 
@@ -31,8 +33,8 @@ public class BackgroundMonitorService : IDisposable
     private int _consecutiveTextExtractionFailures = 0;
     private DateTime _lastHandledPromptsCleanup = DateTime.MinValue;
     private const int MaxConsecutiveFailuresBeforeRecovery = 10;
-    private const int CacheCleanupIntervalMinutes = 5;
-    private const int HandledPromptsCleanupIntervalMinutes = 10;
+    private const int CacheCleanupIntervalMinutes = 1;    // PHASE 1 FIX: Reduced from 5 minutes
+    private const int HandledPromptsCleanupIntervalMinutes = 2;  // PHASE 1 FIX: Reduced from 10 minutes
 
     // Conversation boundary detection
     private string? _lastTerminalTextHash;
@@ -49,10 +51,26 @@ public class BackgroundMonitorService : IDisposable
     {
         _logger = logger;
         _statistics = statistics;
+        _healthMetrics = new TerminalHealthMetrics();  // PHASE 2/3: Initialize metrics
+        _healthMonitor = new TerminalHealthMonitor(logger, _healthMetrics);  // PHASE 2/3: Initialize monitor
 
         // Use proven automation components
         var parser = new ClaudePromptParserSimple();
         _detector = new ClaudePromptDetector(parser);
+
+        // PHASE 2/3: Wire up detector metrics callbacks to health monitor
+        _detector.OnTextExtraction = success =>
+        {
+            if (success)
+                _healthMonitor.RecordSuccessfulExtraction();
+            else
+                _healthMonitor.RecordFailedExtraction();
+        };
+        _detector.OnCacheHit = () => _healthMonitor.RecordCacheHit();
+        _detector.OnCacheMiss = () => _healthMonitor.RecordCacheMiss();
+        _detector.OnCacheCleanup = (removed, size) => _healthMonitor.RecordCacheCleanup(removed, size);
+        _detector.OnCacheSizeChanged = size => _healthMonitor.UpdateCacheSize(size);
+        _detector.OnWindowValidationFailure = () => _healthMonitor.RecordWindowValidationFailure();
 
         var executorLogger = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information))
             .CreateLogger<ClaudePermissionPromptExecutorHardened>();
@@ -98,6 +116,9 @@ public class BackgroundMonitorService : IDisposable
             }
         }
     }
+
+    // PHASE 2/3: Expose health metrics for UI display
+    public TerminalHealthMetrics HealthMetrics => _healthMetrics;
 
     /// <summary>
     /// Start continuous monitoring of the specified terminal
@@ -245,6 +266,16 @@ public class BackgroundMonitorService : IDisposable
                 {
                     _logger.LogInfo("MONITOR_HANDLED_PROMPTS_CLEANUP: Periodic cleanup completed (24/7 stability)");
                 }
+            }
+
+            // PHASE 2: Health monitoring and auto-recovery
+            // Check health every 30 seconds and trigger recovery if needed
+            if (_healthMonitor.CheckHealthAndShouldRecover(session.Terminal.WindowInfo.WindowHandle))
+            {
+                _logger.LogInfo("PHASE2_AUTO_RECOVERY: Health check triggered recovery");
+                TriggerRecovery(session.Terminal.WindowInfo.WindowHandle);
+                _healthMonitor.RecordRecovery();
+                return; // Skip this cycle, let recovery take effect
             }
 
             // Check if terminal still exists
@@ -540,17 +571,39 @@ public class BackgroundMonitorService : IDisposable
         _logger.LogInfo("═══════════════════════════════════════");
         _logger.LogInfo("MONITOR_RECOVERY_START");
         _logger.LogInfo($"  Reason: {_consecutiveTextExtractionFailures} consecutive text extraction failures");
-        _logger.LogInfo($"  Action: Clearing UI Automation cache");
+        _logger.LogInfo($"  Action: Aggressive cache cleanup and COM object release");
 
         try
         {
-            // Clear the detector's automation element cache to force fresh element acquisition
-            _detector.ClearCache(windowHandle);
-            _logger.LogInfo("  Cache cleared successfully");
+            // PHASE 1 FIX: Aggressive recovery with COM cleanup
 
-            // Also clear handled prompts to allow re-detection
+            // Step 1: Clear the detector's automation element cache
+            _detector.ClearCache(windowHandle);
+            _logger.LogInfo("  Detector cache cleared");
+
+            // Step 2: Run detector's cleanup to release COM objects
+            _detector.CleanupStaleCache();
+            _logger.LogInfo("  Stale COM objects released");
+
+            // Step 3: Clear handled prompts to allow re-detection
             _executor.ClearHandledPrompts();
             _logger.LogInfo("  Handled prompts cleared");
+
+            // Step 4: Force conversation boundary detection reset
+            _lastTerminalTextHash = null;
+            _lastTerminalTextLength = 0;
+            _lastConversationBoundary = DateTime.UtcNow;
+            _logger.LogInfo("  Conversation boundary reset");
+
+            // Step 5: Force garbage collection to release COM objects
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            _logger.LogInfo("  Forced garbage collection complete");
+
+            // Step 6: Reset cleanup timers to force immediate cleanup on next cycle
+            _lastCacheCleanup = DateTime.MinValue;
+            _lastHandledPromptsCleanup = DateTime.MinValue;
 
             _logger.LogInfo("MONITOR_RECOVERY_COMPLETE");
         }
@@ -646,6 +699,13 @@ public class BackgroundMonitorService : IDisposable
     {
         Stop();
         _monitorTimer?.Dispose();
+
+        // PHASE 1 FIX: Dispose detector to release COM objects
+        (_detector as IDisposable)?.Dispose();
+
+        // PHASE 1 FIX: Force garbage collection to release unmanaged resources
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
     }
 }
 

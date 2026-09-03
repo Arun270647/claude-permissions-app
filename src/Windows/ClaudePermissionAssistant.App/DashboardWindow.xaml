@@ -105,6 +105,9 @@
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="12"/>
                                         <TextBlock Text="{Binding Details}" FontSize="10" Foreground="Gray"/>
+                                        <!-- PHASE 2/3: Health status and metrics -->
+                                        <TextBlock Text="{Binding HealthInfo}" FontSize="10" Foreground="DarkBlue" Margin="0,3,0,0"/>
+                                        <TextBlock Text="{Binding DiagnosticsInfo}" FontSize="9" Foreground="Gray" Margin="0,2,0,0"/>
                                     </StackPanel>
 
                                     <Button Grid.Column="2" Content="Remove" Width="70" Height="25"
@@ -132,7 +135,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Version (Bottom Left) -->
-            <TextBlock Grid.Column="0" Text="v1.0.0"
+            <TextBlock Name="VersionTextBlock" Grid.Column="0"
                        FontSize="11" Foreground="Gray"
                        VerticalAlignment="Center"/>
 
