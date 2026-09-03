@@ -302,7 +302,7 @@ jobs:
     - name: Create GitHub Release
       # This action creates the tag via GitHub API (bypasses git push workflow permission restriction)
       # No separate "git tag && git push" step needed
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ needs.detect-version.outputs.version }}
         name: v${{ needs.detect-version.outputs.version }}
@@ -313,6 +313,7 @@ jobs:
         body_path: release-notes.md
         draft: false
         prerelease: false
+        make_latest: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -372,7 +373,12 @@ jobs:
           '{version: $ver, url: $url, checksum: $checksum, changelog: $changelog, patchNotes: $patchNotes, publishedAt: $publishedAt, mandatory: false}' \
           > latest-macos-x64.json
 
-    - name: Commit update manifests to main
+    - name: Update website version
+      run: |
+        chmod +x scripts/update-website-version.sh
+        ./scripts/update-website-version.sh "${{ needs.detect-version.outputs.version }}"
+
+    - name: Commit update manifests and website to main
       continue-on-error: true
       run: |
         git config user.name "GitHub Actions"
@@ -380,16 +386,17 @@ jobs:
         git fetch origin main
         git checkout main
         git pull origin main
-        git add latest-*.json
-        git commit -m "chore: Update manifests for v${{ needs.detect-version.outputs.version }} [skip ci]" || echo "No changes to commit"
-        git push origin main || echo "Warning: Could not push manifests (workflow permission restriction). Manifests will be updated on next manual push."
+        git add latest-*.json website/version.json
+        git commit -m "chore: Update manifests and website for v${{ needs.detect-version.outputs.version }} [skip ci]" || echo "No changes to commit"
+        git push origin main || echo "Warning: Could not push updates (workflow permission restriction). Updates will be synced on next manual push."
 
     - name: Trigger website deployment (Vercel)
       if: always()
       run: |
         # Trigger Vercel redeployment via webhook (if configured)
         if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
+          echo "Triggering Vercel deployment..."
           curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
         else
-          echo "Vercel deploy hook not configured - website will update on next commit"
+          echo "✅ Website will auto-deploy from main branch (Vercel watches claude-permissions-app repo)"
         fi
